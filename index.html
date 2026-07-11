@@ -314,7 +314,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.1'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.4'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -1101,8 +1101,10 @@ function adminSettings(){
   else{h+='<div class="hint">Касса может жить на бесплатном GitHub Pages: вы жмёте «Сохранить» — родители сразу видят свежие данные по постоянной ссылке, защищённой паролем класса.</div>';}
   h+='<button class="btn wide" onclick="pubWizard()">'+(DATA.pubSec?'⚙️ Настройки публикации':'🚀 Настроить публикацию')+'</button></div>';
   h+='<div class="card"><h2>📦 Экспорт и импорт</h2>';
-  h+='<div class="btnrow"><button class="btn sec" onclick="exportJSON()">⬇ Резервная копия (.json)</button>'+
-     '<button class="btn sec" onclick="exportCSV()">⬇ Таблица для Excel (.csv)</button></div>';
+  h+='<div class="btnrow"><button class="btn sec" onclick="saveFile()">💾 Автономная копия (.html)</button>'+
+     '<button class="btn sec" onclick="exportJSON()">⬇ Резервная копия (.json)</button>'+
+     '<button class="btn sec" onclick="exportCSV()">⬇ Таблица для Excel (.csv)</button></div>'+
+     '<div class="hint">💾 Автономная копия — полный файл кассы со всеми данными и настройками: открывается на компьютере без интернета, из него можно восстановить или заново опубликовать сайт.</div>';
   h+='<label class="f">Импорт данных — из .json или из файла кассы (.html)</label>';
   h+='<input type="file" id="imp-file" accept=".json,.html,.htm,text/html,application/json">';
   h+='<button class="btn wide" onclick="importFile()">Импортировать</button>';
