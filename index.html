@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Касса класса</title>
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;defs&gt;&lt;linearGradient id='g' x1='0' y1='0' x2='1' y2='1'&gt;&lt;stop offset='0' stop-color='%235b6ee1'/&gt;&lt;stop offset='1' stop-color='%23a35be1'/&gt;&lt;/linearGradient&gt;&lt;/defs&gt;&lt;circle cx='50' cy='50' r='48' fill='url(%23g)'/&gt;&lt;text x='50' y='70' font-size='60' text-anchor='middle' fill='white' font-family='Arial,sans-serif' font-weight='bold'&gt;₽&lt;/text&gt;&lt;/svg&gt;">
+<style>
+:root{
+  --bg:#f5f6fb; --card:#ffffff; --ink:#22263a; --muted:#7a8095;
+  --acc:#5b6ee1; --acc-soft:#eceffc; --green:#129d6a; --green-soft:#e3f6ee;
+  --red:#e04343; --red-soft:#fdecec; --blue:#2f86d6; --blue-soft:#e8f2fc;
+  --amber:#e8890c; --amber-soft:#fdf3e3; --line:#e8eaf2; --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;padding-bottom:90px}
+.wrap{max-width:760px;margin:0 auto;padding:0 12px}
+header.hero{background:linear-gradient(135deg,#5b6ee1 0%,#7c5be1 55%,#a35be1 100%);
+  color:#fff;padding:18px 0 52px;border-radius:0 0 26px 26px}
+header.hero .wrap{display:flex;flex-direction:column;gap:2px}
+.hero h1{font-size:20px;font-weight:800;letter-spacing:.2px}
+.hero .sub{font-size:13px;opacity:.85}
+.balance-card{background:var(--card);border-radius:var(--r);box-shadow:0 8px 24px rgba(60,70,140,.12);
+  margin:-38px auto 14px;padding:16px 18px;max-width:760px;text-align:center}
+.balance-card .lbl{font-size:13px;color:var(--muted)}
+.balance-card .val{font-size:32px;font-weight:800;color:var(--acc);letter-spacing:.3px}
+.balance-card .mini{display:flex;justify-content:center;gap:18px;margin-top:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.balance-card .mini b{color:var(--ink)}
+.tabs{display:flex;gap:6px;position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;margin-bottom:10px}
+.tabs button{flex:1;border:0;background:#fff;border-radius:12px;padding:10px 4px;font-size:14px;font-weight:600;
+  color:var(--muted);box-shadow:0 1px 3px rgba(40,50,100,.08);cursor:pointer}
+.tabs button.on{background:var(--acc);color:#fff}
+.card{background:var(--card);border-radius:var(--r);box-shadow:0 1px 4px rgba(40,50,100,.07);padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:16px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h3{font-size:14px;font-weight:700;margin:12px 0 6px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .nm{font-weight:600;flex:1;min-width:0}
+.row .nm small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.chip.g{background:var(--green-soft);color:var(--green)}
+.chip.r{background:var(--red-soft);color:var(--red)}
+.chip.b{background:var(--blue-soft);color:var(--blue)}
+.chip.a{background:var(--amber-soft);color:var(--amber)}
+.chip.n{background:#eef0f5;color:var(--muted)}
+.pbar{height:8px;background:#eef0f5;border-radius:99px;overflow:hidden;margin:6px 0 4px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#8f6ee8);border-radius:99px}
+.pbar.done i{background:var(--green)}
+.art-meta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);flex-wrap:wrap;gap:4px}
+.money{font-weight:700;white-space:nowrap}
+.money.neg{color:var(--red)} .money.pos{color:var(--green)}
+input,select,textarea{font:inherit;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
+label.f{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 4px}
+.btn{border:0;border-radius:11px;padding:10px 16px;font-size:14.5px;font-weight:700;cursor:pointer;background:var(--acc);color:#fff}
+.btn.sec{background:var(--acc-soft);color:var(--acc)}
+.btn.gry{background:#eef0f5;color:#8a90a3}
+.pwwrap{position:relative}
+.pwwrap input{padding-right:44px}
+.eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;font-size:18px;cursor:pointer;opacity:.55;padding:6px}
+.eye.on{opacity:1}
+.notice-card{background:linear-gradient(120deg,#fff4e0,#ffe9d2);border:1.5px solid #f5c98a;border-radius:14px;
+  padding:11px 14px;margin:0 0 10px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;
+  box-shadow:0 2px 8px rgba(200,140,40,.12)}
+.notice-card .nico{font-size:22px;line-height:1}
+.notice-card .ntx{font-size:14px;color:#7a4d0d}
+.notice-card .nsub{margin-top:5px}
+.btn.grn{background:var(--green)} .btn.red{background:var(--red-soft);color:var(--red)}
+.btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
+.btn.wide{width:100%;margin-top:12px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.note{background:var(--amber-soft);color:#8a5a10;border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+.searchbox{margin-bottom:10px}
+.empty{text-align:center;color:var(--muted);padding:24px 10px;font-size:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.bar-row .bl{width:38%;font-size:12.5px;color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .bt{flex:1;height:20px;background:#eef0f5;border-radius:6px;overflow:hidden;position:relative}
+.bar-row .bt i{display:block;height:100%;background:linear-gradient(90deg,#e8890c,#e05a43);border-radius:6px}
+.bar-row .bv{font-size:12.5px;font-weight:700;white-space:nowrap;min-width:64px}
+.exp-item{padding:9px 0;border-bottom:1px solid var(--line)}
+.exp-item:last-child{border-bottom:0}
+.exp-item .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.exp-item .dt{font-size:12px;color:var(--muted)}
+.exp-item .ds{font-size:14px;margin-top:2px}
+.tag{display:inline-block;background:var(--acc-soft);color:var(--acc);border-radius:7px;padding:1px 8px;font-size:11.5px;font-weight:700;margin-right:6px}
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;box-shadow:0 -4px 20px rgba(40,50,100,.15);padding:10px 14px}
+.savebar .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.savebar .tx{flex:1;font-size:13px;font-weight:600;color:var(--amber)}
+.modal-bg{position:fixed;inset:0;background:rgba(25,28,50,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:600px){.modal-bg{align-items:center}}
+.modal{background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:16px 16px 20px}
+@media(min-width:600px){.modal{border-radius:18px}}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.modal .x{border:0;background:#eef0f5;border-radius:99px;width:30px;height:30px;font-size:15px;cursor:pointer;color:var(--muted);font-weight:700}
+.subtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}
+.subtabs button{border:0;background:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:700;color:var(--muted);
+  box-shadow:0 1px 3px rgba(40,50,100,.08);cursor:pointer;white-space:nowrap}
+.subtabs button.on{background:var(--acc);color:#fff}
+.lockbox{text-align:center;padding:26px 14px}
+.lockbox .ic{font-size:40px}
+.kid-contact{background:var(--blue-soft);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:6px}
+.kid-contact div{padding:1px 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:#2a2f45;color:#fff;padding:10px 18px;
+  border-radius:99px;font-size:13.5px;z-index:200;box-shadow:0 6px 18px rgba(0,0,0,.25);max-width:92%;text-align:center}
+.inactive{opacity:.5}
+.checkrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.checkrow:last-child{border-bottom:0}
+.checkrow input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc);flex:none}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:16px 0 8px}
+.updated{font-size:11.5px;opacity:.8;margin-top:2px}
+.gate{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.gcard{background:var(--card,#fff);border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.10);padding:28px 24px;max-width:380px;width:100%;text-align:center}
+.gcard input{width:100%}
+</style>
+</head>
+<body>
+<script id="app-data" type="application/json">/*DATA_START*/{"stub":true}/*DATA_END*/</script>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script>
+"use strict";
+/* ================= КРИПТОГРАФИЯ ================= */
+/*CRYPTO_START*/
+function sha256(msg){
+  var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  var l=msg.length, blocks=((l+8)>>6)+1, W=new Uint32Array(blocks*16);
+  for(var i=0;i<l;i++) W[i>>2]|=msg[i]<<(24-(i&3)*8);
+  W[l>>2]|=0x80<<(24-(l&3)*8);
+  W[blocks*16-1]=(l*8)>>>0; W[blocks*16-2]=(l*8/0x100000000)|0;
+  var w=new Uint32Array(64);
+  function rr(x,n){return (x>>>n)|(x<<(32-n));}
+  for(var b=0;b<blocks;b++){
+    for(var t=0;t<16;t++) w[t]=W[b*16+t];
+    for(t=16;t<64;t++){
+      var s0=rr(w[t-15],7)^rr(w[t-15],18)^(w[t-15]>>>3);
+      var s1=rr(w[t-2],17)^rr(w[t-2],19)^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)|0;
+    }
+    var a=H[0],bb=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(t=0;t<64;t++){
+      var S1=rr(e,6)^rr(e,11)^rr(e,25), ch=(e&f)^(~e&g);
+      var t1=(h+S1+ch+K[t]+w[t])|0;
+      var S0=rr(a,2)^rr(a,13)^rr(a,22), mj=(a&bb)^(a&c)^(bb&c);
+      var t2=(S0+mj)|0;
+      h=g;g=f;f=e;e=(d+t1)|0;d=c;c=bb;bb=a;a=(t1+t2)|0;
+    }
+    H[0]=(H[0]+a)|0;H[1]=(H[1]+bb)|0;H[2]=(H[2]+c)|0;H[3]=(H[3]+d)|0;
+    H[4]=(H[4]+e)|0;H[5]=(H[5]+f)|0;H[6]=(H[6]+g)|0;H[7]=(H[7]+h)|0;
+  }
+  var out=new Uint8Array(32);
+  for(i=0;i<8;i++){out[i*4]=(H[i]>>>24)&255;out[i*4+1]=(H[i]>>>16)&255;out[i*4+2]=(H[i]>>>8)&255;out[i*4+3]=H[i]&255;}
+  return out;
+}
+function catBytes(){var n=0,i;for(i=0;i<arguments.length;i++)n+=arguments[i].length;
+  var o=new Uint8Array(n),p=0;for(i=0;i<arguments.length;i++){o.set(arguments[i],p);p+=arguments[i].length;}return o;}
+function utf8(s){return new TextEncoder().encode(s);}
+function bytesToHex(u){var s='';for(var i=0;i<u.length;i++)s+=('0'+u[i].toString(16)).slice(-2);return s;}
+function hexToBytes(h){var u=new Uint8Array(h.length/2);for(var i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u;}
+function b64enc(u){var s='';for(var i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);}
+function b64dec(s){var bin=atob(s),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;}
+function randBytes(n){var u=new Uint8Array(n);
+  if(typeof crypto!=='undefined'&&crypto.getRandomValues){crypto.getRandomValues(u);}
+  else{for(var i=0;i<n;i++)u[i]=Math.floor(Math.random()*256);}return u;}
+function deriveKey(pw,salt){var k=sha256(catBytes(utf8(pw),salt));
+  for(var i=0;i<15000;i++)k=sha256(k);return k;}
+function keystream(key,len){var o=new Uint8Array(len),p=0,ctr=0;
+  while(p<len){var c=new Uint8Array(4);c[0]=(ctr>>>24)&255;c[1]=(ctr>>>16)&255;c[2]=(ctr>>>8)&255;c[3]=ctr&255;
+    var blk=sha256(catBytes(key,c));
+    for(var i=0;i<32&&p<len;i++,p++)o[p]=blk[i];ctr++;}
+  return o;}
+function macOf(key,ct){return bytesToHex(sha256(catBytes(key,ct,utf8('mac'))));}
+function encryptSecure(pw,obj){var salt=randBytes(16),key=deriveKey(pw,salt);
+  var pt=utf8(JSON.stringify(obj)),ks=keystream(key,pt.length),ct=new Uint8Array(pt.length);
+  for(var i=0;i<pt.length;i++)ct[i]=pt[i]^ks[i];
+  return {salt:bytesToHex(salt),ct:b64enc(ct),mac:macOf(key,ct)};}
+function decryptSecure(pw,sec){
+  try{
+    var salt=hexToBytes(sec.salt),key=deriveKey(pw,salt),ct=b64dec(sec.ct);
+    if(macOf(key,ct)!==sec.mac)return null;
+    var ks=keystream(key,ct.length),pt=new Uint8Array(ct.length);
+    for(var i=0;i<ct.length;i++)pt[i]=ct[i]^ks[i];
+    return JSON.parse(new TextDecoder().decode(pt));
+  }catch(e){return null;}
+}
+/*CRYPTO_END*/
+</script>
+<script>
+"use strict";
+/* Основной код приложения добавляется вторым блоком (см. app.js) */
+/* ===== снимок чистого исходника страницы (для сохранения файла) ===== */
+var __TPL__ = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+/* ===== загрузка данных ===== */
+var MS='/*DATA_'+'START*/', ME='/*DATA_'+'END*/';
+var DATA=(function(){
+  var t=document.getElementById('app-data').textContent;
+  var i=t.indexOf(MS)+MS.length, j=t.indexOf(ME,i);
+  return JSON.parse(t.slice(i,j));
+})();
+
+var PW=null, CONTACTS=null, dirty=false;
+var REMOTE=(DATA&&DATA.stub===true), PPW=null, PUBBLOB=null, PPW_KEY='kassa_ppw_v13';
+var YSEL=DATA.currentYear;
+function Y(){
+  for(var i=0;i<DATA.years.length;i++)if(DATA.years[i].id===YSEL)return DATA.years[i];
+  return DATA.years[0];
+}
+function setYear(id){YSEL=id;kidsFilter='';kidQuery='';incArticle='';render();}
+var tab='sum', tTab='inc', kidQuery='', tQuery='';
+var incArticle='', incDate=todayISO(), incMethod='Сбер';
+
+/* ===== утилиты ===== */
+function $(s){return document.querySelector(s);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function uid(){return 'x'+Math.random().toString(36).slice(2,9)+Date.now().toString(36);}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function fmt(n){n=Math.round(n);var s=Math.abs(n).toLocaleString('ru-RU');return (n<0?'−':'')+s+'\u00A0₽';}
+function dateRu(iso){if(!iso)return '';var p=iso.split('-');return p[2]+'.'+p[1]+'.'+p[0];}
+function byName(a,b){return a.name.localeCompare(b.name,'ru');}
+function toast(msg,ms){var r=$('#toast-root');r.innerHTML='<div class="toast">'+esc(msg)+'</div>';
+  setTimeout(function(){r.innerHTML='';},ms||2600);}
+function markDirty(){dirty=true;}
+/* ===== отмена действий ===== */
+var UNDO=[];
+function snapshot(label){
+  UNDO.push({label:label,data:JSON.stringify(DATA)});
+  if(UNDO.length>30)UNDO.shift();
+}
+function undo(){
+  if(!UNDO.length){toast('Отменять нечего');return;}
+  var u=UNDO.pop();
+  DATA=JSON.parse(u.data);
+  var ok=false;DATA.years.forEach(function(y){if(y.id===YSEL)ok=true;});
+  if(!ok)YSEL=DATA.currentYear;
+  ok=false;DATA.years.forEach(function(y){if(y.id===YSEL)ok=true;});
+  if(!ok)YSEL=DATA.years[0].id;
+  if(PW){var c=decryptSecure(PW,DATA.secure);if(c)CONTACTS=c;}
+  markDirty();render();toast('↩ Отменено: '+u.label);
+}
+function normPhone(s){return String(s||'').replace(/\D/g,'');}
+
+/* ===== выборки и расчёты ===== */
+function kidsActive(){return Y().children.filter(function(k){return k.active!==false;}).sort(byName);}
+function kidById(id){for(var i=0;i<Y().children.length;i++)if(Y().children[i].id===id)return Y().children[i];return null;}
+function artById(id){for(var i=0;i<Y().articles.length;i++)if(Y().articles[i].id===id)return Y().articles[i];return null;}
+function artsActive(){return Y().articles.filter(function(a){return a.active!==false;});}
+function participates(art,kidId){return (art.excluded||[]).indexOf(kidId)<0;}
+function paidBy(kidId,artId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId&&x.article===artId)s+=x.amount;});return s;}
+function paidTotal(kidId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId)s+=x.amount;});return s;}
+function rateFor(a,kidId){return (a.alt&&(a.altKids||[]).indexOf(kidId)>=0)?a.alt.rate:a.rate;}
+function rateText(a){return a.alt?fmt(a.rate)+' / '+fmt(a.alt.rate):fmt(a.rate);}
+function expectedFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=rateFor(a,kidId);});return s;}
+function debtFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=(rateFor(a,kidId)-paidBy(kidId,a.id));});return s;}
+function artCollected(artId){var s=0;Y().incomes.forEach(function(x){if(x.article===artId)s+=x.amount;});return s;}
+function artSpent(artId){var s=0;Y().expenses.forEach(function(x){if(x.article===artId)s+=x.amount;});return s;}
+function sumIncomes(){var s=0;Y().incomes.forEach(function(x){s+=x.amount;});return s;}
+function sumExpenses(){var s=0;Y().expenses.forEach(function(x){s+=x.amount;});return s;}
+function cashTotal(){return (Y().startBalance||0)+sumIncomes()-sumExpenses();}
+function debtorsCount(){var n=0;kidsActive().forEach(function(k){if(debtFor(k.id)>0)n++;});return n;}
+function artName(id){if(!id)return 'Общая касса';var a=artById(id);return a?a.name:'(удалённая статья)';}
+
+/* ===== главный рендер ===== */
+function render(){
+  document.title='Касса '+String(Y().className).replace(/[«»]/g,'"');
+  var app=$('#app'), h='';
+  h+='<header class="hero"><div class="wrap">';
+  h+='<h1>💰 Касса класса '+esc(Y().className)+'</h1>';
+  h+='<div class="sub">Учебный год '+esc(Y().year)+(DATA.meta.updated?' · <span class="updated">обновлено '+esc(DATA.meta.updated)+'</span>':'')+'</div>';
+  h+='</div></header>';
+  h+='<div class="wrap">';
+  h+='<div class="balance-card"><div class="lbl">Сейчас в кассе</div><div class="val">'+fmt(cashTotal())+'</div>';
+  if(!Y().expenses.length&&(Y().startBalance||0)!==0)
+    h+='<div class="mini"><span>Перенос на начало года: <b>'+fmt(Y().startBalance||0)+'</b></span></div>';
+  h+=
+  '<div style="margin-top:10px"><select style="max-width:280px;display:inline-block" onchange="setYear(this.value)">'+
+  DATA.years.map(function(y){return '<option value="'+y.id+'"'+(y.id===YSEL?' selected':'')+'>'+esc(y.className)+' · '+esc(y.year)+(y.id===DATA.currentYear?' — текущий':'')+'</option>';}).join('')+
+  '</select></div></div>';
+
+  artsActive().forEach(function(a){
+    if(!a.notice||artSpent(a.id)>0)return;
+    var parts=kidsActive().filter(function(k){return participates(a,k.id);});
+    var full=0;parts.forEach(function(k){if(paidBy(k.id,a.id)>=rateFor(a,k.id))full++;});
+    var rest=parts.length-full;
+    h+='<div class="notice-card" onclick="openArt(\''+a.id+'\')">'+
+       '<span class="nico">📣</span><div class="ntx"><b>Идёт сбор: '+esc(a.name)+'</b> — '+rateText(a)+' с человека'+
+       '<div class="nsub"><span class="chip g">сдали: '+full+'</span> <span class="chip '+(rest?'r':'g')+'">'+(rest?'осталось: '+rest:'все сдали ✓')+'</span></div></div></div>';
+  });
+  h+='<div class="tabs">';
+  h+=tabBtn('sum','📊 Сводка')+tabBtn('kids','👧 Взносы')+tabBtn('exp','🧾 Расходы')+tabBtn('adm','✎ Правка');
+  h+='</div>';
+
+  if(tab==='sum')h+=viewSummary();
+  else if(tab==='kids')h+=viewKids();
+  else if(tab==='exp')h+=viewExpenses();
+  else h+=viewAdmin();
+
+  h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
+     '<div class="updated">Автономная касса класса · сборка v'+(DATA.meta.build||1)+
+     (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
+  h+='</div>';
+
+  if(dirty){
+    h+='<div class="savebar"><div class="in"><div class="tx">⚠ Есть несохранённые изменения</div>';
+    if(REMOTE){h+='<button class="btn grn" onclick="publishData()">☁️ Сохранить</button>';}
+    else{h+='<button class="btn grn" onclick="saveFile()">💾 Сохранить файл</button>';
+      if(DATA.pubSec&&PW)h+='<button class="btn sec" onclick="publishData()">☁️ Опубликовать</button>';}
+    h+='</div></div>';
+  }
+  app.innerHTML=h;
+}
+function tabBtn(id,label){return '<button class="'+(tab===id?'on':'')+'" onclick="setTab(\''+id+'\')">'+label+'</button>';}
+function setTab(t){tab=t;render();}
+
+/* ===== СВОДКА ===== */
+function viewSummary(){
+  var h='';
+  if(Y().startNote)h+='<div class="note">ℹ️ '+esc(Y().startNote)+'</div>';
+  var dc=debtorsCount();
+  h+='<div class="card"><h2>📌 Коротко</h2>';
+  h+='<div class="row"><div class="nm">Детей в классе</div><span class="chip b">'+kidsActive().length+'</span></div>';
+  h+='<div class="row"><div class="nm">Активных сборов</div><span class="chip b">'+artsActive().length+'</span></div>';
+  h+='<div class="row"><div class="nm">Не сдали полностью</div><span class="chip '+(dc?'r':'g')+'">'+(dc?dc+' чел.':'все сдали ✓')+'</span></div>';
+  h+='</div>';
+
+  h+='<div class="card"><h2>🎯 Сборы: собрано и потрачено</h2>';
+  var arts=artsActive();
+  if(!arts.length)h+='<div class="empty">Сборы ещё не объявлены</div>';
+  else h+='<div class="hint" style="margin-bottom:2px">Нажмите на сбор — откроется список, кто сдал, а кто нет.</div>';
+  arts.forEach(function(a){
+    var expected=0;kidsActive().forEach(function(k){if(participates(a,k.id))expected+=rateFor(a,k.id);});
+    var got=artCollected(a.id), spent=artSpent(a.id);
+    var pct=expected>0?Math.min(100,Math.round(got/expected*100)):0;
+    h+='<div style="margin:12px 0 14px;cursor:pointer" onclick="openArt(\''+a.id+'\')">';
+    h+='<div style="display:flex;justify-content:space-between;gap:8px"><b>'+(a.birthday?'🎂 ':'')+esc(a.name)+'</b>'+
+       '<span class="chip a">'+rateText(a)+' / чел.</span></div>';
+    h+='<div class="pbar'+(pct>=100?' done':'')+'"><i style="width:'+pct+'%"></i></div>';
+    h+='<div class="art-meta"><span>Собрано '+fmt(got)+' из '+fmt(expected)+' ('+pct+'%)</span>'+
+       '<span>Потрачено '+fmt(spent)+'</span><span>Остаток по статье <b>'+fmt(got-spent)+'</b></span></div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+/* ===== ВЗНОСЫ (дети) ===== */
+var kidsFilter='';
+function viewKids(){
+  var h='<div class="card"><h2>👧 Взносы по детям</h2>';
+  h+='<label class="f">Что показать</label><select onchange="kidsFilterSet(this.value)">';
+  h+='<option value=""'+(kidsFilter===''?' selected':'')+'>Общий итог по всем сборам</option>';
+  artsActive().forEach(function(a){
+    h+='<option value="'+a.id+'"'+(kidsFilter===a.id?' selected':'')+'>'+(a.birthday?'🎂 ':'')+esc(a.name)+' — '+rateText(a)+'</option>';
+  });
+  h+='</select>';
+  h+='<div class="searchbox" style="margin-top:8px"><input placeholder="Поиск по фамилии…" value="'+esc(kidQuery)+'" oninput="kidSearch(this.value)"></div>';
+  h+='<div id="kids-list">'+kidsListHTML()+'</div>';
+  h+='<div class="hint">Нажмите на ребёнка, чтобы увидеть подробности по каждому сбору.</div></div>';
+  return h;
+}
+function kidsFilterSet(v){
+  kidsFilter=v;
+  var el=document.getElementById('kids-list');
+  if(el)el.innerHTML=kidsListHTML();
+}
+function kidSearch(v){
+  kidQuery=v;
+  var el=document.getElementById('kids-list');
+  if(el)el.innerHTML=kidsListHTML();
+}
+function kidsListHTML(){
+  var h='';
+  var q=kidQuery.trim().toLowerCase();
+  var list=kidsActive().filter(function(k){return !q||k.name.toLowerCase().indexOf(q)>=0;});
+  var a=kidsFilter?artById(kidsFilter):null;
+  if(a){
+    var full=0,part=0,none=0;
+    list.forEach(function(k){
+      if(!participates(a,k.id))return;
+      var p=paidBy(k.id,a.id),r=rateFor(a,k.id);
+      if(p>=r)full++;else if(p>0)part++;else none++;
+    });
+    h+='<div class="btnrow" style="margin-bottom:6px">'+
+       '<span class="chip g">сдали: '+full+'</span>'+
+       (part?'<span class="chip a">частично: '+part+'</span>':'')+
+       '<span class="chip '+(none?'r':'g')+'">не сдали: '+none+'</span></div>';
+  }
+  if(!list.length)h+='<div class="empty">Никого не нашлось</div>';
+  list.forEach(function(k){
+    var chip,sub;
+    if(a){
+      if(!participates(a,k.id)){chip='<span class="chip n">не участвует</span>';sub='';}
+      else{
+        var p=paidBy(k.id,a.id),r=rateFor(a,k.id);
+        chip = p>=r ? '<span class="chip g">'+fmt(p)+' ✓'+(p>r?' переплата':'')+'</span>'
+             : p>0 ? '<span class="chip a">долг '+fmt(r-p)+'</span>'
+                   : '<span class="chip r">долг '+fmt(r)+'</span>';
+        sub = (p>0&&p<r ? 'сдано '+fmt(p)+' из '+fmt(r) : '')+(a.alt?(p>0&&p<r?' · ':'')+tierLabel(a,k.id):'');
+      }
+    }else{
+      var d=debtFor(k.id), paid=paidTotal(k.id);
+      chip = d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
+           : d<0 ? '<span class="chip b">переплата '+fmt(-d)+'</span>'
+                 : '<span class="chip g">всё сдано ✓</span>';
+      sub = 'сдано за год: '+fmt(paid);
+    }
+    h+='<div class="row" onclick="openKid(\''+k.id+'\')" style="cursor:pointer">'+
+       '<div class="nm">'+esc(k.name)+(sub?'<small>'+sub+'</small>':'')+'</div>'+chip+'</div>';
+  });
+  return h;
+}
+function openKid(id){
+  var k=kidById(id); if(!k)return;
+  var h='<h2>'+esc(k.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  if(k.bday)h+='<div class="hint">🎂 День рождения: '+esc(k.bday)+'</div>';
+  if(PW&&CONTACTS&&CONTACTS[id]){
+    var c=CONTACTS[id];
+    h+='<div class="kid-contact"><div>📞 '+esc(c.phone||'—')+'</div><div>💳 Перевод от: '+esc(c.from||'—')+'</div><div>🏦 Банк: '+esc(c.bank||'—')+'</div></div>';
+  }
+  h+='<h3>По сборам</h3>';
+  artsActive().forEach(function(a){
+    var chip;
+    if(!participates(a,id))chip='<span class="chip n">не участвует</span>';
+    else{
+      var p=paidBy(id,a.id),r=rateFor(a,id);
+      chip = p>=r ? '<span class="chip g">'+fmt(p)+' ✓'+(p>r?' (переплата)':'')+'</span>'
+           : p>0 ? '<span class="chip a">'+fmt(p)+' из '+fmt(r)+'</span>'
+                 : '<span class="chip r">не сдано</span>';
+    }
+    var gift=(a.birthday&&(a.gifts||[]).indexOf(id)>=0)?' <span class="chip b">🎁 подарок вручён</span>':'';
+    h+='<div class="row"><div class="nm">'+(a.birthday?'🎂 ':'')+esc(a.name)+'</div><div>'+chip+gift+'</div></div>';
+  });
+  var hist=Y().incomes.filter(function(x){return x.child===id;})
+    .sort(function(a,b){return b.date<a.date?-1:1;});
+  h+='<h3>История платежей</h3>';
+  if(!hist.length)h+='<div class="empty">Платежей пока нет</div>';
+  hist.forEach(function(x){
+    h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span>'+
+       (x.method?'<span class="dt">'+esc(x.method)+'</span>':'')+'</span><span class="money pos">+'+fmt(x.amount)+'</span></div>'+
+       '<div class="dt">'+dateRu(x.date)+'</div></div>';
+  });
+  showModal(h);
+}
+
+/* ===== карточка сбора: кто сдал ===== */
+function openArt(id){
+  var a=artById(id);if(!a)return;
+  var kids=kidsActive(),full=[],part=[],none=[],out=[];
+  kids.forEach(function(k){
+    if(!participates(a,k.id)){out.push(k);return;}
+    var p=paidBy(k.id,a.id),r=rateFor(a,k.id);
+    if(p>=r)full.push({k:k,p:p,r:r});
+    else if(p>0)part.push({k:k,p:p,r:r});
+    else none.push({k:k,p:0,r:r});
+  });
+  var h='<h2>'+(a.birthday?'🎂 ':'')+esc(a.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">Ставка '+rateText(a)+' с человека'+(a.active===false?' · сбор в архиве':'')+'</div>';
+  h+='<div class="btnrow" style="margin:8px 0 4px">'+
+     '<span class="chip g">сдали: '+full.length+'</span>'+
+     '<span class="chip a">частично: '+part.length+'</span>'+
+     '<span class="chip r">не сдали: '+none.length+'</span>'+
+     (out.length?'<span class="chip n">не участвуют: '+out.length+'</span>':'')+'</div>';
+  function block(title,arr,mk){
+    if(!arr.length)return '';
+    var t='<h3>'+title+'</h3>';
+    arr.forEach(function(r){t+='<div class="row"><div class="nm">'+esc(r.k?r.k.name:r.name)+'</div>'+mk(r)+'</div>';});
+    return t;
+  }
+  h+=block('❌ Не сдали ('+none.length+')',none,function(r){return '<span class="chip r">долг '+fmt(r.r)+'</span>';});
+  h+=block('🕗 Сдали частично ('+part.length+')',part,function(r){return '<span class="chip a">сдано '+fmt(r.p)+' · долг '+fmt(r.r-r.p)+'</span>';});
+  h+=block('✅ Сдали ('+full.length+')',full,function(r){return '<span class="chip g">'+fmt(r.p)+' ✓'+(r.p>r.r?' переплата':'')+'</span>';});
+  if(a.alt){
+    h+='<h3>💠 Разбивка по вариантам</h3>';
+    [{lbl:tierName(a,false),price:a.rate,alt:false},{lbl:tierName(a,true),price:a.alt.rate,alt:true}].forEach(function(t){
+      var grp=kids.filter(function(k){return participates(a,k.id)&&(((a.altKids||[]).indexOf(k.id)>=0)===t.alt);});
+      h+='<div class="row"><div class="nm"><b>'+esc(t.lbl)+'</b> — '+fmt(t.price)+'</div><span class="chip b">'+grp.length+' чел.</span></div>';
+      grp.forEach(function(k){
+        var p=paidBy(k.id,a.id);
+        h+='<div class="row" style="padding-left:14px"><div class="nm">'+esc(k.name)+'</div>'+
+           (p>=t.price?'<span class="chip g">'+fmt(p)+' ✓</span>':p>0?'<span class="chip a">'+fmt(p)+'</span>':'<span class="chip r">не сдано</span>')+'</div>';
+      });
+    });
+  }
+  if(out.length){
+    h+='<h3>— Не участвуют ('+out.length+')</h3>';
+    out.forEach(function(k){h+='<div class="row"><div class="nm inactive">'+esc(k.name)+'</div><span class="chip n">не участвует</span></div>';});
+  }
+  showModal(h);
+}
+
+function tierName(a,isAlt){
+  if(isAlt)return (a.alt&&a.alt.label)||'вариант 2';
+  return a.label||'основной вариант';
+}
+function tierLabel(a,kidId){
+  if(!a.alt)return '';
+  return '💠 '+esc(tierName(a,(a.altKids||[]).indexOf(kidId)>=0));
+}
+
+/* ===== РАСХОДЫ ===== */
+function viewExpenses(){
+  var h='<div class="card"><h2>💼 Итоги года</h2>';
+  h+='<div class="row"><div class="nm">Собрано за год</div><span class="money pos">+'+fmt(sumIncomes())+'</span></div>';
+  h+='<div class="row"><div class="nm">Потрачено за год</div><span class="money neg">−'+fmt(sumExpenses())+'</span></div>';
+  h+='<div class="row"><div class="nm">Перенос на начало года</div><span class="money">'+fmt(Y().startBalance||0)+'</span></div>';
+  h+='<div class="row"><div class="nm"><b>Сейчас в кассе</b></div><span class="money" style="color:var(--acc)">'+fmt(cashTotal())+'</span></div>';
+  h+='</div>';
+  (Y().notes||[]).forEach(function(n){
+    h+='<div class="note">ℹ️ <b>Справочно:</b> '+esc(n.text)+'</div>';
+  });
+  h+='<div class="card"><h2>📉 Расходы по статьям</h2>';
+  var totals={},max=0;
+  Y().expenses.forEach(function(x){totals[x.article||'']=(totals[x.article||'']||0)+x.amount;});
+  var keys=Object.keys(totals).sort(function(a,b){return totals[b]-totals[a];});
+  keys.forEach(function(k){if(totals[k]>max)max=totals[k];});
+  if(!keys.length)h+='<div class="empty">Расходов пока не было</div>';
+  keys.forEach(function(k){
+    var w=max>0?Math.max(3,Math.round(totals[k]/max*100)):0;
+    h+='<div class="bar-row"><div class="bl">'+esc(artName(k))+'</div>'+
+       '<div class="bt"><i style="width:'+w+'%"></i></div><div class="bv">'+fmt(totals[k])+'</div></div>';
+  });
+  h+='</div>';
+
+  h+='<div class="card"><h2>🧾 Все расходы</h2>';
+  var list=Y().expenses.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+  if(!list.length)h+='<div class="empty">Список пуст — как только появятся траты, они будут здесь с датой и описанием</div>';
+  list.forEach(function(x){
+    h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span></span>'+
+       '<span class="money neg">−'+fmt(x.amount)+'</span></div>'+
+       '<div class="ds">'+esc(x.desc||'')+'</div><div class="dt">'+dateRu(x.date)+'</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+/* ===== КАЗНАЧЕЙ ===== */
+function viewAdmin(){
+  if(!PW){
+    return '<div class="card lockbox"><div class="ic">🔒</div><h2 style="justify-content:center">Правка данных</h2>'+
+      '<p class="hint" style="margin-bottom:10px">Здесь вносятся приходы и расходы.<br>Для просмотра пароль не нужен.</p>'+
+      '<div class="pwwrap" style="max-width:280px;margin:0 auto">'+
+      '<input type="password" id="pw-in" placeholder="Пароль" onkeydown="if(event.key===\'Enter\')unlock()">'+
+      '<button class="eye" onclick="togglePw(\'pw-in\',this)" title="показать/скрыть пароль">👁</button></div>'+
+      '<br><button class="btn" style="margin-top:6px" onclick="unlock()">Войти</button>'+
+      (DATA.defaultPw?'<div class="note" style="margin-top:12px;text-align:left">Пароль по умолчанию: <b>'+esc(DATA.defaultPw)+'</b>. Войдите и обязательно смените его в «⚙️ Настройки» — подсказка исчезнет.</div>':'')+
+      '<div style="margin-top:10px"><a href="#" style="font-size:13px;color:var(--acc)" onclick="event.preventDefault();var d=document.getElementById(\'rec-box\');d.style.display=(d.style.display===\'none\'?\'block\':\'none\')">Забыли пароль?</a></div>'+
+      '<div id="rec-box" style="display:none;max-width:280px;margin:10px auto 0">'+
+      '<input id="rec-in" placeholder="Код восстановления" style="text-transform:uppercase">'+
+      '<button class="btn sec" style="margin-top:8px" onclick="tryRecover()">Восстановить пароль</button></div></div>';
+  }
+  var h='<div class="subtabs">'+
+    stBtn('inc','➕ Приход')+stBtn('out','➖ Расход')+stBtn('log','📒 Журнал')+
+    stBtn('kid','👧 Дети')+stBtn('bd','🎂 ДР')+stBtn('art','📚 Сборы')+stBtn('set','⚙️ Настройки')+'</div>';
+  h+='<div class="hint" style="margin-bottom:6px">Вы правите год: <b>'+esc(Y().className)+' '+esc(Y().year)+'</b>. Другой год выбирается наверху, под остатком кассы.</div>';
+  if(UNDO.length)h+='<div style="margin-bottom:8px"><button class="btn sm gry" onclick="undo()">↩ Отменить: '+esc(UNDO[UNDO.length-1].label)+'</button></div>';
+  if(tTab==='inc')h+=adminIncome();
+  else if(tTab==='out')h+=adminExpense();
+  else if(tTab==='log')h+=adminLog();
+  else if(tTab==='kid')h+=adminKids();
+  else if(tTab==='bd')h+=adminBirthdays();
+  else if(tTab==='art')h+=adminArts();
+  else h+=adminSettings();
+  return h;
+}
+function stBtn(id,l){return '<button class="'+(tTab===id?'on':'')+'" onclick="tTab=\''+id+'\';render()">'+l+'</button>';}
+function genRecCode(){
+  var A='ABCDEFGHJKMNPQRSTUVWXYZ23456789',out='';
+  var r=randBytes(12);
+  for(var i=0;i<12;i++){if(i&&i%4===0)out+='-';out+=A[r[i]%A.length];}
+  return out;
+}
+function setRecovery(code){
+  DATA.recovery=encryptSecure(code,{pw:PW});
+  DATA.recView=encryptSecure(PW,{code:code});
+}
+function showRecModal(code,intro){
+  showModal('<h2>🔑 Код восстановления<button class="x" onclick="closeModal()">✕</button></h2>'+
+    (intro?'<div class="hint">'+intro+'</div>':'')+
+    '<div style="text-align:center;font-size:23px;font-weight:800;letter-spacing:2px;margin:14px 0;color:var(--acc)">'+esc(code)+'</div>'+
+    '<div class="hint">Запишите код на бумаге и храните отдельно от пароля. Забудете пароль — на экране входа нажмите «Забыли пароль?» и введите этот код. Код хранится внутри файла, поэтому после его выдачи сохраните файл.</div>');
+}
+function showCurRec(){
+  var r=DATA.recView?decryptSecure(PW,DATA.recView):null;
+  if(!r||!r.code){toast('Код не найден — выдайте новый');return;}
+  showRecModal(r.code,'Текущий код восстановления:');
+}
+function regenRec(){
+  snapshot('новый код восстановления');
+  var code=genRecCode();setRecovery(code);
+  markDirty();render();showRecModal(code,'Старый код больше не действует. Новый код:');
+}
+function tryRecover(){
+  var code=($('#rec-in').value||'').trim().toUpperCase();
+  if(!code){toast('Введите код восстановления');return;}
+  if(!DATA.recovery){toast('В этом файле код восстановления ещё не настроен');return;}
+  toast('Проверяю код…',6000);
+  setTimeout(function(){
+    var r=decryptSecure(code,DATA.recovery);
+    if(!r||!r.pw){toast('❌ Код не подходит');return;}
+    var c=decryptSecure(r.pw,DATA.secure);
+    if(!c){toast('Код устарел — пароль менялся. Нужен свежий код.');return;}
+    PW=r.pw;CONTACTS=c;render();
+    showModal('<h2>Пароль восстановлен ✅<button class="x" onclick="closeModal()">✕</button></h2>'+
+      '<div class="hint">Ваш пароль:</div>'+
+      '<div style="text-align:center;font-size:22px;font-weight:800;margin:12px 0">'+esc(r.pw)+'</div>'+
+      '<div class="hint">Запишите его. Хотите сменить — «⚙️ Настройки», там же будет выдан и новый код восстановления.</div>');
+  },30);
+}
+function togglePw(id,btn){
+  var el=document.getElementById(id);if(!el)return;
+  el.type=(el.type==='password')?'text':'password';
+  btn.className=(el.type==='password')?'eye':'eye on';
+  el.focus();
+}
+function unlock(){
+  var pw=$('#pw-in').value;
+  if(!pw){toast('Введите пароль');return;}
+  toast('Проверяю пароль…',6000);
+  setTimeout(function(){
+    var c=decryptSecure(pw,DATA.secure);
+    if(c===null){toast('❌ Неверный пароль');return;}
+    PW=pw;CONTACTS=c;
+    if(DATA.defaultPw&&pw!==DATA.defaultPw)delete DATA.defaultPw;
+    render();toast('✅ Правка открыта');
+    if(!DATA.recovery){var code=genRecCode();setRecovery(code);markDirty();render();
+      showRecModal(code,'У этого файла ещё не было кода восстановления — вот он:');}
+  },30);
+}
+
+/* --- приход --- */
+function adminIncome(){
+  var arts=artsActive();
+  if(!incArticle&&arts.length)incArticle=arts[0].id;
+  var h='<div class="card"><h2>➕ Записать взнос</h2><div class="grid2">';
+  h+='<div><label class="f">Сбор</label><select onchange="incArticle=this.value;render()">';
+  arts.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===incArticle?' selected':'')+'>'+esc(a.name)+' ('+rateText(a)+')</option>';});
+  h+='</select></div>';
+  h+='<div><label class="f">Дата</label><input type="date" value="'+incDate+'" onchange="incDate=this.value"></div>';
+  h+='</div>';
+  h+='<label class="f">Способ оплаты</label><select onchange="incMethod=this.value">';
+  ['Сбер','Тинькофф','ВТБ','Озон','Альфа','наличные','другое'].forEach(function(m){
+    h+='<option'+(m===incMethod?' selected':'')+'>'+m+'</option>';});
+  h+='</select>';
+  var a=artById(incArticle);
+  if(a){
+    h+='<h3>Отметить оплату — '+esc(a.name)+'</h3><div class="hint">Кнопка «+ставка» записывает ставку ребёнка ('+rateText(a)+'), «± сумма» — любую другую (частичную оплату или доплату). Ошибочный взнос можно исправить или удалить во вкладке «📒 Журнал».</div>';
+    kidsActive().forEach(function(k){
+      if(!participates(a,k.id)){
+        h+='<div class="row"><div class="nm inactive">'+esc(k.name)+'</div><span class="chip n">не участвует</span></div>';return;
+      }
+      var p=paidBy(k.id,a.id),r=rateFor(a,k.id);
+      var st=p>=r?'<span class="chip g">'+fmt(p)+' ✓</span>':p>0?'<span class="chip a">'+fmt(p)+'</span>':'<span class="chip r">0</span>';
+      h+='<div class="row"><div class="nm">'+esc(k.name)+(a.alt?'<small>'+tierLabel(a,k.id)+'</small>':'')+'</div><div class="btnrow">'+st+
+        '<button class="btn sm sec" onclick="addInc(\''+k.id+'\','+r+')">+'+r+'</button>'+
+        '<button class="btn sm sec" onclick="addIncCustom(\''+k.id+'\')">± сумма</button></div></div>';
+    });
+  }
+  h+='</div>';
+  return h;
+}
+function addInc(kidId,amount){
+  snapshot('взнос: '+kidById(kidId).name);
+  Y().incomes.push({id:uid(),date:incDate,child:kidId,article:incArticle,amount:amount,method:incMethod});
+  markDirty();render();toast('Записано: '+kidById(kidId).name.split(' ')[0]+' +'+fmt(amount));
+}
+function addIncCustom(kidId){
+  var v=prompt('Сумма, ₽ (можно частичную):','');
+  if(v===null)return;
+  var n=parseFloat(String(v).replace(',','.').replace(/\s/g,''));
+  if(!n||n<=0){toast('Введите сумму больше нуля');return;}
+  addInc(kidId,Math.round(n));
+}
+
+/* --- расход --- */
+function adminExpense(){
+  var h='<div class="card"><h2>➖ Записать расход</h2>';
+  h+='<div class="grid2"><div><label class="f">Статья</label><select id="ex-art">';
+  Y().articles.forEach(function(a){h+='<option value="'+a.id+'">'+esc(a.name)+(a.active===false?' (архив)':'')+'</option>';});
+  h+='<option value="">Общая касса (без статьи)</option></select></div>';
+  h+='<div><label class="f">Дата</label><input type="date" id="ex-date" value="'+todayISO()+'"></div></div>';
+  h+='<label class="f">Сумма, ₽</label><input type="number" id="ex-sum" inputmode="numeric" placeholder="Например, 1500">';
+  h+='<label class="f">На что потрачено (обязательно)</label><input id="ex-desc" placeholder="Например: букет учителю на 1 сентября">';
+  h+='<button class="btn wide" onclick="addExp()">Добавить расход</button>';
+  h+='<div class="hint">Описание увидят все родители — пишите так, чтобы через год было понятно. Исправить или удалить расход можно во вкладке «📒 Журнал».</div></div>';
+  h+='<div class="card"><h2>ℹ️ Справочные примечания</h2>';
+  h+='<div class="hint" style="margin-bottom:8px">Показываются всем на вкладке «Расходы», но деньгами не являются и в кассе не участвуют. Например: «пособия куплены в прошлом году».</div>';
+  (Y().notes||[]).forEach(function(n){
+    h+='<div class="exp-item"><div class="top"><span>'+esc(n.text)+'</span>'+
+       '<span><button class="btn sm sec" onclick="editNote(\''+n.id+'\')">✎</button> '+
+       '<button class="btn sm red" onclick="delNote(\''+n.id+'\')">✕</button></span></div></div>';
+  });
+  h+='<label class="f">Новое примечание</label><textarea id="nt-new" rows="2" placeholder="Текст, который увидят родители"></textarea>';
+  h+='<button class="btn sec wide" onclick="addNote()">Добавить примечание</button></div>';
+  return h;
+}
+function addNote(){
+  var t=$('#nt-new').value.trim();
+  if(!t){toast('Введите текст примечания');return;}
+  snapshot('новое примечание');
+  Y().notes=Y().notes||[];
+  Y().notes.push({id:uid(),text:t});
+  markDirty();render();toast('Примечание добавлено');
+}
+function editNote(id){
+  var n=(Y().notes||[]).filter(function(x){return x.id===id;})[0];if(!n)return;
+  var h='<h2>✎ Примечание<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<textarea id="nt-edit" rows="4">'+esc(n.text)+'</textarea>';
+  h+='<button class="btn wide" onclick="saveNote(\''+id+'\')">Сохранить</button>';
+  showModal(h);
+}
+function saveNote(id){
+  var n=(Y().notes||[]).filter(function(x){return x.id===id;})[0];if(!n)return;
+  var t=$('#nt-edit').value.trim();
+  if(!t){toast('Текст пуст — лучше удалить примечание кнопкой ✕');return;}
+  snapshot('правка примечания');
+  n.text=t;markDirty();closeModal();render();toast('Сохранено');
+}
+function delNote(id){
+  if(!confirm('Удалить примечание?'))return;
+  snapshot('удаление примечания');
+  Y().notes=(Y().notes||[]).filter(function(x){return x.id!==id;});
+  markDirty();render();
+}
+function addExp(){
+  var art=$('#ex-art').value,date=$('#ex-date').value,sum=parseFloat($('#ex-sum').value),desc=$('#ex-desc').value.trim();
+  if(!date){toast('Укажите дату');return;}
+  if(!sum||sum<=0){toast('Укажите сумму');return;}
+  if(!desc){toast('Опишите, на что потрачено');return;}
+  snapshot('расход: '+desc.slice(0,30));
+  Y().expenses.push({id:uid(),date:date,article:art,amount:Math.round(sum),desc:desc});
+  markDirty();render();toast('Расход записан: −'+fmt(Math.round(sum)));
+}
+
+/* --- журнал --- */
+function adminLog(){
+  var h='<div class="card"><h2>📒 Журнал операций</h2><div class="hint">✎ — исправить запись, ✕ — удалить. Любое действие можно откатить кнопкой «↩ Отменить» выше.</div>';
+  var ops=[];
+  Y().incomes.forEach(function(x){ops.push({t:'inc',o:x});});
+  Y().expenses.forEach(function(x){ops.push({t:'exp',o:x});});
+  ops.sort(function(a,b){return a.o.date<b.o.date?1:-1;});
+  if(!ops.length)h+='<div class="empty">Операций пока нет</div>';
+  ops.forEach(function(r){
+    var x=r.o;
+    if(r.t==='inc'){
+      var k=kidById(x.child);
+      h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span>'+esc(k?k.name:'?')+'</span>'+
+         '<span><span class="money pos">+'+fmt(x.amount)+'</span> <button class="btn sm sec" onclick="editInc(\''+x.id+'\')">✎</button> <button class="btn sm red" onclick="delOp(\'inc\',\''+x.id+'\')">✕</button></span></div>'+
+         '<div class="dt">'+dateRu(x.date)+(x.method?' · '+esc(x.method):'')+'</div></div>';
+    }else{
+      h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span>'+esc(x.desc||'')+'</span>'+
+         '<span><span class="money neg">−'+fmt(x.amount)+'</span> <button class="btn sm sec" onclick="editExp(\''+x.id+'\')">✎</button> <button class="btn sm red" onclick="delOp(\'exp\',\''+x.id+'\')">✕</button></span></div>'+
+         '<div class="dt">'+dateRu(x.date)+'</div></div>';
+    }
+  });
+  h+='</div>';
+  return h;
+}
+function findOp(arr,id){for(var i=0;i<arr.length;i++)if(arr[i].id===id)return arr[i];return null;}
+function editInc(id){
+  var x=findOp(Y().incomes,id);if(!x)return;
+  var k=kidById(x.child);
+  var h='<h2>✎ Правка взноса<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint" style="margin-bottom:6px">'+esc(k?k.name:'?')+'</div>';
+  h+='<label class="f">Сбор</label><select id="ei-art">';
+  Y().articles.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===x.article?' selected':'')+'>'+esc(a.name)+(a.active===false?' (архив)':'')+'</option>';});
+  h+='</select>';
+  h+='<div class="grid2"><div><label class="f">Дата</label><input type="date" id="ei-date" value="'+esc(x.date)+'"></div>';
+  h+='<div><label class="f">Сумма, ₽</label><input type="number" id="ei-sum" inputmode="numeric" value="'+x.amount+'"></div></div>';
+  h+='<label class="f">Способ оплаты</label><select id="ei-m">';
+  ['Сбер','Тинькофф','ВТБ','Озон','Альфа','наличные','другое'].forEach(function(m){
+    h+='<option'+(m===x.method?' selected':'')+'>'+m+'</option>';});
+  h+='</select>';
+  h+='<button class="btn wide" onclick="saveIncEdit(\''+id+'\')">Сохранить</button>';
+  showModal(h);
+}
+function saveIncEdit(id){
+  var x=findOp(Y().incomes,id);if(!x)return;
+  var sum=parseFloat($('#ei-sum').value),date=$('#ei-date').value;
+  if(!date){toast('Укажите дату');return;}
+  if(!(sum>0)){toast('Укажите сумму больше нуля');return;}
+  snapshot('правка взноса');
+  x.article=$('#ei-art').value;x.date=date;x.amount=Math.round(sum);x.method=$('#ei-m').value;
+  markDirty();closeModal();render();toast('Взнос исправлен');
+}
+function editExp(id){
+  var x=findOp(Y().expenses,id);if(!x)return;
+  var h='<h2>✎ Правка расхода<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<label class="f">Статья</label><select id="ee-art">';
+  Y().articles.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===x.article?' selected':'')+'>'+esc(a.name)+(a.active===false?' (архив)':'')+'</option>';});
+  h+='<option value=""'+(!x.article?' selected':'')+'>Общая касса (без статьи)</option></select>';
+  h+='<div class="grid2"><div><label class="f">Дата</label><input type="date" id="ee-date" value="'+esc(x.date)+'"></div>';
+  h+='<div><label class="f">Сумма, ₽</label><input type="number" id="ee-sum" inputmode="numeric" value="'+x.amount+'"></div></div>';
+  h+='<label class="f">Описание</label><input id="ee-desc" value="'+esc(x.desc||'')+'">';
+  h+='<button class="btn wide" onclick="saveExpEdit(\''+id+'\')">Сохранить</button>';
+  showModal(h);
+}
+function saveExpEdit(id){
+  var x=findOp(Y().expenses,id);if(!x)return;
+  var sum=parseFloat($('#ee-sum').value),date=$('#ee-date').value,desc=$('#ee-desc').value.trim();
+  if(!date){toast('Укажите дату');return;}
+  if(!(sum>0)){toast('Укажите сумму больше нуля');return;}
+  if(!desc){toast('Опишите, на что потрачено');return;}
+  snapshot('правка расхода');
+  x.article=$('#ee-art').value;x.date=date;x.amount=Math.round(sum);x.desc=desc;
+  markDirty();closeModal();render();toast('Расход исправлен');
+}
+function delOp(t,id){
+  if(!confirm('Удалить запись?'))return;
+  snapshot(t==='inc'?'удаление взноса':'удаление расхода');
+  var arr=t==='inc'?Y().incomes:Y().expenses;
+  for(var i=0;i<arr.length;i++)if(arr[i].id===id){arr.splice(i,1);break;}
+  markDirty();render();
+}
+
+/* --- дети --- */
+function adminKids(){
+  var h='<div class="card"><h2>🔎 Поиск по всему</h2>';
+  h+='<input placeholder="Фамилия, телефон, «перевод от», банк…" value="'+esc(tQuery)+'" oninput="tSearch(this.value)">';
+  h+='<div id="t-results">'+tResultsHTML()+'</div>';
+  h+='</div>';
+
+  h+='<div class="card"><h2>👧 Список детей</h2>';
+  Y().children.slice().sort(byName).forEach(function(k){
+    var c=(CONTACTS&&CONTACTS[k.id])||{};
+    h+='<div class="row'+(k.active===false?' inactive':'')+'"><div class="nm">'+esc(k.name)+
+       '<small>📞 '+esc(c.phone||'—')+' · 💳 '+esc(c.from||'—')+' · '+esc(c.bank||'—')+(k.bday?' · 🎂 '+esc(k.bday):'')+'</small></div>'+
+       '<div class="btnrow"><button class="btn sm sec" onclick="editKid(\''+k.id+'\')">✎</button>'+
+       '<button class="btn sm gry" title="'+(k.active===false?'вернуть в класс':'в архив (выбыл)')+'" onclick="toggleKid(\''+k.id+'\')">'+(k.active===false?'↩':'🗄')+'</button></div></div>';
+  });
+  h+='<button class="btn wide" onclick="editKid(null)">＋ Добавить ребёнка</button>';
+  h+='<div class="hint">🗄 переносит выбывшего ребёнка в архив: он скрывается из расчётов, но история платежей сохраняется; ↩ возвращает.</div></div>';
+  return h;
+}
+function tSearch(v){
+  tQuery=v;
+  var el=document.getElementById('t-results');
+  if(el)el.innerHTML=tResultsHTML();
+}
+function tResultsHTML(){
+  var h='';
+  var q=tQuery.trim().toLowerCase(), qd=normPhone(tQuery);
+  if(q){
+    var found=Y().children.filter(function(k){
+      var c=(CONTACTS&&CONTACTS[k.id])||{};
+      return k.name.toLowerCase().indexOf(q)>=0||
+        (qd.length>=3&&normPhone(c.phone).indexOf(qd)>=0)||
+        String(c.from||'').toLowerCase().indexOf(q)>=0||
+        String(c.bank||'').toLowerCase().indexOf(q)>=0;
+    });
+    if(!found.length)h+='<div class="empty">Ничего не найдено</div>';
+    found.forEach(function(k){
+      var c=(CONTACTS&&CONTACTS[k.id])||{};
+      h+='<div class="exp-item"><b>'+esc(k.name)+'</b>'+(k.active===false?' <span class="chip n">выбыл</span>':'')+
+        '<div class="kid-contact"><div>📞 '+esc(c.phone||'—')+'</div><div>💳 Перевод от: '+esc(c.from||'—')+'</div><div>🏦 '+esc(c.bank||'—')+'</div></div></div>';
+    });
+  } else h+='<div class="hint">Введите любой обрывок данных — найдётся вся связка «ребёнок — телефон — отправитель — банк».</div>';
+  return h;
+}
+function toggleKid(id){var k=kidById(id);snapshot(k.active===false?'возврат: '+k.name:'в архив: '+k.name);k.active=(k.active===false);markDirty();render();}
+function editKid(id){
+  var k=id?kidById(id):{name:'',bday:''};
+  var c=id?(CONTACTS[id]||{}):{};
+  var h='<h2>'+(id?'Изменить данные':'Новый ребёнок')+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<label class="f">Фамилия и имя</label><input id="k-name" value="'+esc(k.name)+'">';
+  h+='<label class="f">Телефон родителя</label><input id="k-phone" value="'+esc(c.phone||'')+'">';
+  h+='<label class="f">Перевод приходит от</label><input id="k-from" value="'+esc(c.from||'')+'">';
+  h+='<label class="f">Банк</label><input id="k-bank" value="'+esc(c.bank||'')+'">';
+  h+='<label class="f">День рождения (дд.мм)</label><input id="k-bday" value="'+esc(k.bday||'')+'" placeholder="14.01">';
+  h+='<button class="btn wide" onclick="saveKid('+(id?'\''+id+'\'':'null')+')">Сохранить</button>';
+  h+='<div class="hint">Телефон, отправитель и банк хранятся в зашифрованном виде — родители их не видят.</div>';
+  showModal(h);
+}
+function saveKid(id){
+  var name=$('#k-name').value.trim();
+  if(!name){toast('Укажите фамилию и имя');return;}
+  snapshot(id?'правка данных ребёнка':'новый ребёнок');
+  var contact={phone:$('#k-phone').value.trim(),from:$('#k-from').value.trim(),bank:$('#k-bank').value.trim()};
+  var bday=$('#k-bday').value.trim();
+  if(id){var k=kidById(id);k.name=name;k.bday=bday;CONTACTS[id]=contact;}
+  else{var nid=uid();Y().children.push({id:nid,name:name,bday:bday,active:true});CONTACTS[nid]=contact;}
+  reEncrypt();markDirty();closeModal();render();toast('Сохранено');
+}
+function reEncrypt(){
+  if(!PW||!CONTACTS){toast('Сначала войдите в правку');return;}
+  DATA.secure=encryptSecure(PW,CONTACTS);
+}
+
+/* --- сборы (статьи) --- */
+function adminArts(){
+  var h='<div class="card"><h2>📚 Сборы (статьи)</h2>';
+  var live=Y().articles.filter(function(a){return a.active!==false;});
+  var arch=Y().articles.filter(function(a){return a.active===false;});
+  var divider=false;
+  live.concat(arch).forEach(function(a){
+    if(a.active===false&&!divider){divider=true;h+='<h3 style="color:var(--muted)">🗄 В архиве ('+arch.length+')</h3>';}
+    var parts=kidsActive().filter(function(k){return participates(a,k.id);}).length;
+    h+='<div class="row'+(a.active===false?' inactive':'')+'"><div class="nm" style="cursor:pointer" onclick="openArt(\''+a.id+'\')">'+(a.birthday?'🎂 ':'')+esc(a.name)+
+       '<small>'+rateText(a)+' с человека · участвуют: '+parts+' из '+kidsActive().length+(a.active===false?' · в архиве':'')+'</small></div>'+
+       '<div class="btnrow"><button class="btn sm sec" onclick="editArt(\''+a.id+'\')">✎</button>'+
+       '<button class="btn sm sec" onclick="partArt(\''+a.id+'\')">👥</button>'+
+       (a.alt?'<button class="btn sm sec" title="варианты цены" onclick="tierArt(\''+a.id+'\')">💠</button>':'')+
+       (a.birthday?'<button class="btn sm sec" onclick="giftArt(\''+a.id+'\')">🎁</button>':'')+
+       '<button class="btn sm gry" title="'+(a.active===false?'вернуть из архива':'сбор в архив')+'" onclick="toggleArt(\''+a.id+'\')">'+(a.active===false?'↩':'🗄')+'</button>'+
+       '<button class="btn sm red" title="удалить сбор" onclick="delArt(\''+a.id+'\')">🗑</button></div></div>';
+  });
+  h+='<button class="btn wide" onclick="editArt(null)">＋ Новый сбор</button>';
+  h+='<div class="hint">Нажмите на название сбора — увидите, кто сдал. ✎ — название и ставка · 👥 — кто участвует · 🎁 — вручение подарков (для сбора на ДР) · 🗄 — в архив (история и деньги остаются), ↩ — вернуть · 🗑 — удалить (доступно, только пока по сбору нет ни одной операции).</div></div>';
+  return h;
+}
+function delArt(id){
+  var a=artById(id);if(!a)return;
+  var used=false;
+  Y().incomes.forEach(function(x){if(x.article===id)used=true;});
+  Y().expenses.forEach(function(x){if(x.article===id)used=true;});
+  if(used){toast('По сбору «'+a.name+'» уже есть операции — удалить нельзя. Отправьте его в архив (🗄), история сохранится.',5000);return;}
+  if(!confirm('Удалить сбор «'+a.name+'»?'))return;
+  snapshot('удаление сбора: '+a.name);
+  Y().articles.splice(Y().articles.indexOf(a),1);
+  markDirty();render();toast('Сбор удалён');
+}
+function toggleArt(id){var a=artById(id);snapshot(a.active===false?'возврат сбора: '+a.name:'сбор в архив: '+a.name);a.active=(a.active===false);markDirty();render();}
+function editArt(id){
+  var a=id?artById(id):{name:'',rate:'',birthday:false};
+  var h='<h2>'+(id?'Изменить сбор':'Новый сбор')+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<label class="f">Название</label><input id="a-name" value="'+esc(a.name)+'" placeholder="Например: Новый год">';
+  h+='<div class="grid2"><div><label class="f">Ставка с человека, ₽</label><input id="a-rate" type="number" inputmode="numeric" value="'+(a.rate===0?0:(a.rate||''))+'"></div>'+
+     '<div><label class="f">Название варианта (не обяз.)</label><input id="a-lab" value="'+esc(a.label||'')+'" placeholder="полный комплект"></div></div>';
+  h+='<h3>💠 Второй вариант цены (не обязательно)</h3>'+
+     '<div class="grid2"><div><label class="f">Цена варианта 2, ₽</label><input id="a-alt-rate" type="number" inputmode="numeric" value="'+(a.alt?a.alt.rate:'')+'" placeholder="пусто = без варианта"></div>'+
+     '<div><label class="f">Название варианта 2</label><input id="a-alt-lab" value="'+esc(a.alt?a.alt.label:'')+'" placeholder="мини-версия"></div></div>';
+  h+='<div class="hint">Если у сбора две цены (напр., полный комплект и мини), заполните второй вариант. Потом кнопкой 💠 в списке сборов распределите, кто какой вариант взял.</div>';
+  h+='<div class="checkrow" style="margin-top:10px"><input type="checkbox" id="a-bd"'+(a.birthday?' checked':'')+'><label for="a-bd">🎂 Особый тип: сбор на дни рождения детей</label></div>'+
+  '<div class="hint" style="margin:-2px 0 4px 30px">Приложение не угадывает тип по названию, поэтому галочка есть у каждого сбора — но нужна она обычно только одному: у него появляются отметки «подарок вручён» и связь с вкладкой 🎂 ДР. У обычных сборов оставьте её пустой.</div>';
+  h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Напоминать о сборе на главной странице — напоминание видят все и оно висит, пока по сбору не появится первый расход</label></div>';
+  h+='<button class="btn wide" onclick="saveArt('+(id?'\''+id+'\'':'null')+')">Сохранить</button>';
+  showModal(h);
+}
+function saveArt(id){
+  var name=$('#a-name').value.trim(),rate=parseFloat($('#a-rate').value);
+  if(!name){toast('Укажите название');return;}
+  if(!(rate>=0)){toast('Укажите ставку (можно 0)');return;}
+  var bd=$('#a-bd').checked,nt=$('#a-nt').checked;
+  var altRate=parseFloat($('#a-alt-rate').value),altLab=$('#a-alt-lab').value.trim(),mainLab=$('#a-lab').value.trim();
+  snapshot(id?'правка сбора':'новый сбор');
+  var a;
+  if(id){a=artById(id);a.name=name;a.rate=Math.round(rate);a.birthday=bd;a.notice=nt;}
+  else{a={id:uid(),name:name,rate:Math.round(rate),active:true,birthday:bd,notice:nt,excluded:[],gifts:[]};Y().articles.push(a);}
+  a.label=mainLab||undefined;
+  if(altRate>0){a.alt={rate:Math.round(altRate),label:altLab||'вариант 2'};a.altKids=a.altKids||[];}
+  else{delete a.alt;delete a.altKids;}
+  markDirty();closeModal();render();toast('Сохранено');
+}
+function tierArt(id){
+  var a=artById(id);if(!a||!a.alt)return;
+  var h='<h2>💠 Варианты — '+esc(a.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">Отметьте галочкой тех, кто взял «'+esc(tierName(a,true))+'» ('+fmt(a.alt.rate)+'). Остальные — «'+esc(tierName(a,false))+'» ('+fmt(a.rate)+'). Ставка и долг пересчитаются сами.</div>';
+  kidsActive().forEach(function(k){
+    if(!participates(a,k.id))return;
+    h+='<div class="checkrow"><input type="checkbox" '+((a.altKids||[]).indexOf(k.id)>=0?'checked':'')+
+       ' onchange="toggleTier(\''+id+'\',\''+k.id+'\',this.checked)"><span style="flex:1">'+esc(k.name)+'</span>'+
+       '<span class="chip a">'+fmt(rateFor(a,k.id))+'</span></div>';
+  });
+  showModal(h);
+}
+function toggleTier(artId,kidId,on){
+  var a=artById(artId);a.altKids=a.altKids||[];
+  snapshot('вариант цены: '+kidById(kidId).name);
+  var i=a.altKids.indexOf(kidId);
+  if(on&&i<0)a.altKids.push(kidId);
+  if(!on&&i>=0)a.altKids.splice(i,1);
+  markDirty();
+}
+function partArt(id){
+  var a=artById(id);
+  var h='<h2>👥 Кто участвует — '+esc(a.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">Снимите галочку, если семья не сдаёт на этот сбор — «к оплате» пересчитается автоматически.</div>';
+  kidsActive().forEach(function(k){
+    h+='<div class="checkrow"><input type="checkbox" '+(participates(a,k.id)?'checked':'')+
+       ' onchange="togglePart(\''+id+'\',\''+k.id+'\',this.checked)"><span>'+esc(k.name)+'</span></div>';
+  });
+  showModal(h);
+}
+function togglePart(artId,kidId,on){
+  var a=artById(artId);snapshot('участие: '+kidById(kidId).name);a.excluded=a.excluded||[];
+  var i=a.excluded.indexOf(kidId);
+  if(on&&i>=0)a.excluded.splice(i,1);
+  if(!on&&i<0)a.excluded.push(kidId);
+  markDirty();
+}
+function giftArt(id){
+  var a=artById(id);a.gifts=a.gifts||[];
+  var h='<h2>🎁 Подарки вручены — '+esc(a.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">Отмечайте, когда ребёнок получил подарок. Родители увидят отметку в карточке ребёнка.</div>';
+  var list=kidsActive().slice().sort(function(x,y){
+    function key(k){if(!k.bday)return '99.99';var p=k.bday.split('.');return (p[1]||'99')+'.'+(p[0]||'99');}
+    return key(x)<key(y)?-1:1;
+  });
+  list.forEach(function(k){
+    h+='<div class="checkrow"><input type="checkbox" '+(a.gifts.indexOf(k.id)>=0?'checked':'')+
+       ' onchange="toggleGift(\''+id+'\',\''+k.id+'\',this.checked)"><span>'+esc(k.name)+
+       (k.bday?' <small style="color:var(--muted)">🎂 '+esc(k.bday)+'</small>':'')+'</span></div>';
+  });
+  showModal(h);
+}
+function toggleGift(artId,kidId,on){
+  var a=artById(artId);snapshot('подарок: '+kidById(kidId).name);a.gifts=a.gifts||[];
+  var i=a.gifts.indexOf(kidId);
+  if(on&&i<0)a.gifts.push(kidId);
+  if(!on&&i>=0)a.gifts.splice(i,1);
+  markDirty();
+}
+
+/* --- дни рождения по четвертям --- */
+function quarterOf(bday){
+  if(!bday||!/^\d{1,2}\.\d{1,2}$/.test(String(bday).trim()))return 'нет даты';
+  var p=String(bday).trim().split('.'),v=(+p[1])*100+(+p[0]);
+  if(v>=101&&v<=315)return '3 четверть';
+  if(v>=316&&v<=531)return '4 четверть';
+  if(v>=601&&v<=831)return 'лето';
+  if(v>=901&&v<=1031)return '1 четверть';
+  if(v>=1101&&v<=1231)return '2 четверть';
+  return 'нет даты';
+}
+function bdayKey(k){
+  if(!k.bday||!/^\d{1,2}\.\d{1,2}$/.test(String(k.bday).trim()))return 9999;
+  var p=String(k.bday).trim().split('.');return (+p[1])*100+(+p[0]);
+}
+function adminBirthdays(){
+  var bArt=null;
+  artsActive().forEach(function(a){if(a.birthday&&!bArt)bArt=a;});
+  var groups=['3 четверть','4 четверть','лето','1 четверть','2 четверть','нет даты'];
+  var icons={'3 четверть':'❄️','4 четверть':'🌷','лето':'☀️','1 четверть':'🍁','2 четверть':'🎄','нет даты':'❔'};
+  var h='<div class="card"><h2>🎂 Дни рождения по четвертям</h2>';
+  h+='<div class="hint">Календарный порядок — с января.'+
+     (bArt?' Галочка «🎁» — подарок вручён (сбор «'+esc(bArt.name)+'»).':' Отметки о подарках появятся, когда будет активный сбор на ДР.')+'</div>';
+  groups.forEach(function(g){
+    var list=kidsActive().filter(function(k){return quarterOf(k.bday)===g;})
+      .sort(function(a,b){return bdayKey(a)-bdayKey(b);});
+    if(!list.length)return;
+    h+='<h3>'+icons[g]+' '+g+' <span class="chip b">'+list.length+' чел.</span></h3>';
+    list.forEach(function(k){
+      h+='<div class="checkrow">';
+      if(bArt){
+        h+='<input type="checkbox" title="подарок вручён" '+((bArt.gifts||[]).indexOf(k.id)>=0?'checked':'')+
+           ' onchange="toggleGift(\''+bArt.id+'\',\''+k.id+'\',this.checked)">';
+      }
+      h+='<span style="flex:1">'+esc(k.name)+'</span><span class="chip a">🎂 '+esc(k.bday||'—')+'</span></div>';
+    });
+  });
+  h+='</div>';
+  return h;
+}
+
+/* --- настройки --- */
+function adminSettings(){
+  var h='<div class="card"><h2>⚙️ Настройки</h2>';
+  h+='<label class="f">Класс</label><input id="s-class" value="'+esc(Y().className)+'">';
+  h+='<label class="f">Учебный год</label><input id="s-year" value="'+esc(Y().year)+'">';
+  h+='<label class="f">Стартовый баланс (перенос), ₽</label><input id="s-start" type="number" value="'+(Y().startBalance||0)+'">';
+  h+='<label class="f">Пояснение к переносу (видят родители)</label><textarea id="s-note" rows="2">'+esc(Y().startNote||'')+'</textarea>';
+  h+='<label class="f">Подпись внизу страницы (ФИО, не обязательно)</label><input id="s-keeper" value="'+esc(DATA.meta.keeper||'')+'">';
+  h+='<button class="btn wide" onclick="saveSettings()">Сохранить настройки</button></div>';
+  h+='<div class="card"><h2>🔑 Смена пароля</h2>';
+  h+='<label class="f">Новый пароль</label><div class="pwwrap"><input type="password" id="p1">'+
+     '<button class="eye" onclick="togglePw(\'p1\',this)">👁</button></div>';
+  h+='<label class="f">Ещё раз</label><div class="pwwrap"><input type="password" id="p2">'+
+     '<button class="eye" onclick="togglePw(\'p2\',this)">👁</button></div>';
+  h+='<button class="btn wide" onclick="changePw()">Сменить пароль</button>';
+  h+='<div class="btnrow" style="margin-top:10px"><button class="btn sec" onclick="showCurRec()">🔑 Показать код восстановления</button>'+
+     '<button class="btn sec" onclick="regenRec()">Выдать новый код</button></div>';
+  h+='<div class="hint">Пароль защищает контакты и режим редактирования. Если он забудется, вернуть доступ можно кодом восстановления — храните код на бумаге отдельно. Смена пароля автоматически выдаёт новый код.</div></div>';
+  h+='<div class="card"><h2>🗓 Учебные годы</h2>';
+  DATA.years.forEach(function(y){
+    h+='<div class="row"><div class="nm">'+esc(y.className)+' · '+esc(y.year)+
+       (y.id===DATA.currentYear?'<small>текущий год — его родители видят при открытии</small>':'')+'</div>'+
+       (y.id===DATA.currentYear?'<span class="chip g">текущий</span>':
+        '<button class="btn sm sec" onclick="makeCurrent(\''+y.id+'\')">сделать текущим</button>')+'</div>';
+  });
+  h+='<button class="btn wide" onclick="newYearModal()">➕ Новый учебный год</button>';
+  h+='<div class="hint">История прошлых лет сохраняется в этом же файле — год переключается наверху, под остатком кассы.</div></div>';
+  h+='<div class="card"><h2>☁️ Публикация в интернете</h2>';
+  if(DATA.gh&&DATA.gh.owner){h+='<div class="hint">Сайт для родителей: <b>'+esc(pubUrl())+'</b></div>';}
+  else{h+='<div class="hint">Касса может жить на бесплатном GitHub Pages: вы жмёте «Сохранить» — родители сразу видят свежие данные по постоянной ссылке, защищённой паролем класса.</div>';}
+  h+='<button class="btn wide" onclick="pubWizard()">'+(DATA.pubSec?'⚙️ Настройки публикации':'🚀 Настроить публикацию')+'</button></div>';
+  h+='<div class="card"><h2>📦 Экспорт и импорт</h2>';
+  h+='<div class="btnrow"><button class="btn sec" onclick="exportJSON()">⬇ Резервная копия (.json)</button>'+
+     '<button class="btn sec" onclick="exportCSV()">⬇ Таблица для Excel (.csv)</button></div>';
+  h+='<label class="f">Импорт данных — из .json или из файла кассы (.html)</label>';
+  h+='<input type="file" id="imp-file" accept=".json,.html,.htm,text/html,application/json">';
+  h+='<button class="btn wide" onclick="importFile()">Импортировать</button>';
+  h+='<div class="hint">Импорт полностью заменяет текущие данные данными из выбранного файла (вместе с его паролем). '+
+     'Так удобно переезжать на новую версию приложения: откройте новую версию, импортируйте сюда старый файл кассы — и сохраните.</div></div>';
+  h+='<div class="card"><h2>💾 Как обновлять данные</h2><div class="hint" style="font-size:13.5px;line-height:1.6">'+
+     (REMOTE||DATA.pubSec?
+      'Если публикация настроена: внесите приходы/расходы и нажмите «☁️ Сохранить» — данные сразу обновятся на сайте, родителям ничего делать не нужно.<br>'+
+      'Кнопка «💾 Сохранить файл» скачивает автономную резервную копию — держите её на компьютере на всякий случай.':
+      '1. Внесите приходы/расходы.<br>2. Нажмите «Сохранить файл» внизу — скачается новый HTML.<br>'+
+      '3. Замените им старый файл на сетевом диске (то же имя).<br>4. Родители по прежней ссылке увидят свежие данные.<br>'+
+      'Совет: настройте «☁️ Публикацию в интернете» — и весь этот цикл сведётся к одной кнопке.')+
+     '</div></div>';
+  return h;
+}
+function saveSettings(){
+  snapshot('настройки');
+  Y().className=$('#s-class').value.trim()||Y().className;
+  Y().year=$('#s-year').value.trim()||Y().year;
+  Y().startBalance=Math.round(parseFloat($('#s-start').value)||0);
+  Y().startNote=$('#s-note').value.trim();
+  DATA.meta.keeper=$('#s-keeper').value.trim();
+  markDirty();render();toast('Настройки сохранены');
+}
+function changePw(){
+  if(!CONTACTS){toast('Сначала войдите в правку');return;}
+  var p1=$('#p1').value,p2=$('#p2').value;
+  if(p1.length<4){toast('Пароль слишком короткий (мин. 4 символа)');return;}
+  if(p1!==p2){toast('Пароли не совпадают');return;}
+  var oldPubCfg=getPubCfg();
+  PW=p1;reEncrypt();delete DATA.defaultPw;
+  if(oldPubCfg)DATA.pubSec=encryptSecure(PW,oldPubCfg);
+  var code=genRecCode();setRecovery(code);
+  markDirty();render();
+  showRecModal(code,'Пароль изменён ✅ Вместе с ним выдан новый код восстановления:');
+}
+
+/* ===== экспорт / импорт ===== */
+function download(name,text,mime){
+  var blob=new Blob([text],{type:(mime||'text/plain')+';charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},2000);
+}
+function baseName(){return 'Касса_'+Y().className.replace(/[«»\s]/g,'')+'_v'+(DATA.meta.build||1);}
+function exportJSON(){
+  download(baseName()+'_данные_'+todayISO()+'.json',JSON.stringify(DATA),'application/json');
+  toast('Резервная копия скачана');
+}
+function csvCell(v){v=String(v==null?'':v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function exportCSV(){
+  var SEP=';',NL='\r\n',rows=[];
+  var arts=artsActive();
+  var head=['№','Ребёнок'];
+  arts.forEach(function(a){head.push(a.name+' ('+(a.alt?a.rate+'/'+a.alt.rate:a.rate)+' р.)');});
+  head.push('Итого сдано','Долг');
+  rows.push(head);
+  kidsActive().forEach(function(k,i){
+    var r=[i+1,k.name];
+    arts.forEach(function(a){r.push(participates(a,k.id)?paidBy(k.id,a.id):'не уч.');});
+    r.push(paidTotal(k.id),debtFor(k.id));
+    rows.push(r);
+  });
+  rows.push([]);
+  rows.push(['РАСХОДЫ']);
+  rows.push(['Дата','Статья','Сумма','Описание']);
+  Y().expenses.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(x){
+    rows.push([dateRu(x.date),artName(x.article),x.amount,x.desc||'']);
+  });
+  rows.push([]);
+  rows.push(['ИТОГИ']);
+  rows.push(['Перенос (стартовый баланс)',Y().startBalance||0]);
+  rows.push(['Собрано за год',sumIncomes()]);
+  rows.push(['Потрачено за год',sumExpenses()]);
+  rows.push(['В кассе сейчас',cashTotal()]);
+  var csv='\ufeff'+rows.map(function(r){return r.map(csvCell).join(SEP);}).join(NL);
+  download(baseName()+'_'+String(Y().year).replace('/','-')+'_отчёт_'+todayISO()+'.csv',csv,'text/csv');
+  toast('Таблица для Excel скачана');
+}
+function importFile(){
+  var inp=document.getElementById('imp-file');
+  if(!inp||!inp.files||!inp.files[0]){toast('Сначала выберите файл');return;}
+  var rd=new FileReader();
+  rd.onload=function(){parseImport(String(rd.result));};
+  rd.onerror=function(){toast('Не удалось прочитать файл');};
+  rd.readAsText(inp.files[0],'utf-8');
+}
+function makeCurrent(id){
+  snapshot('смена текущего года');
+  DATA.currentYear=id;YSEL=id;
+  markDirty();render();toast('Текущий год изменён');
+}
+function newYearModal(){
+  var cy=Y();
+  var m=/^(\d+)/.exec(String(cy.className).replace(/[«»]/g,''));
+  var nextClass=m?String(+m[1]+1)+'«'+(String(cy.className).replace(/[^А-ЯЁA-Z]/g,'').slice(-1)||'А')+'»':cy.className;
+  var ym=/^(\d{4})\/(\d{4})$/.exec(cy.year);
+  var nextYear=ym?(+ym[1]+1)+'/'+(+ym[2]+1):cy.year;
+  var h='<h2>➕ Новый учебный год<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<label class="f">Класс</label><input id="ny-class" value="'+esc(nextClass)+'">';
+  h+='<label class="f">Учебный год</label><input id="ny-year" value="'+esc(nextYear)+'">';
+  h+='<label class="f">Стартовый баланс (перенос), ₽</label><input id="ny-start" type="number" value="'+cashTotal()+'">';
+  h+='<div class="hint">Подставлен текущий остаток кассы года «'+esc(cy.className)+' '+esc(cy.year)+'».</div>';
+  h+='<div class="checkrow" style="margin-top:8px"><input type="checkbox" id="ny-kids" checked><label for="ny-kids">Перенести список детей (контакты сохранятся)</label></div>';
+  h+='<div class="checkrow"><input type="checkbox" id="ny-arts" checked><label for="ny-arts">Перенести сборы со ставками (без платежей и подарков)</label></div>';
+  h+='<button class="btn wide" onclick="createYear()">Создать год</button>';
+  showModal(h);
+}
+function createYear(){
+  var cls=$('#ny-class').value.trim(),yl=$('#ny-year').value.trim();
+  if(!cls||!yl){toast('Заполните класс и год');return;}
+  snapshot('новый учебный год');
+  var src=Y(),nid=uid();
+  var kids=$('#ny-kids').checked?src.children.filter(function(k){return k.active!==false;})
+    .map(function(k){return {id:k.id,name:k.name,bday:k.bday,active:true};}):[];
+  var arts=$('#ny-arts').checked?src.articles.filter(function(a){return a.active!==false;})
+    .map(function(a){return {id:uid(),name:a.name,rate:a.rate,active:true,birthday:!!a.birthday,excluded:(a.excluded||[]).slice(),gifts:[]};}):[];
+  DATA.years.push({id:nid,className:cls,year:yl,
+    startBalance:Math.round(parseFloat($('#ny-start').value)||0),
+    startNote:'Стартовый баланс — остаток кассы, перенесённый из года «'+src.className+' '+src.year+'».',
+    children:kids,articles:arts,incomes:[],expenses:[],notes:[]});
+  DATA.currentYear=nid;YSEL=nid;
+  markDirty();closeModal();render();toast('Год '+yl+' создан и сделан текущим');
+}
+function parseImport(t){
+  var d=null;
+  if(t.indexOf(MS)>=0){
+    try{var i=t.indexOf(MS)+MS.length,j=t.indexOf(ME,i);d=JSON.parse(t.slice(i,j));}catch(e){}
+  }else{
+    try{d=JSON.parse(t);}catch(e){}
+  }
+  if(!d||!d.secure){toast('❌ Это не похоже на файл кассы или резервную копию');return;}
+  if(d.years&&d.years.length){ /* новый многолетний формат: полная замена */
+    if(!confirm('Заменить ВСЕ данные (все годы) данными из выбранного файла?'))return;
+    snapshot('импорт данных');
+    var build=Math.max(DATA.meta.build||1,d.meta&&d.meta.build||1);
+    DATA=d;DATA.meta.build=build;YSEL=DATA.currentYear;
+  }else if(d.children&&d.articles&&d.incomes&&d.expenses&&d.meta){ /* старый формат одного года */
+    var yl=d.meta.year||'?',cl=d.meta.className||'?';
+    if(!confirm('Файл старого формата: год «'+cl+', '+yl+'». Обновить/добавить этот год, сохранив остальные годы?'))return;
+    snapshot('импорт года '+yl);
+    var yr={className:cl,year:yl,startBalance:d.meta.startBalance||0,startNote:d.meta.startNote||'',
+      children:d.children,articles:d.articles,incomes:d.incomes,expenses:d.expenses,notes:d.notes||[]};
+    var hit=null;
+    DATA.years.forEach(function(y){if(y.year===yl&&y.className===cl)hit=y;});
+    if(hit){yr.id=hit.id;DATA.years[DATA.years.indexOf(hit)]=yr;}
+    else{yr.id=uid();DATA.years.push(yr);}
+    DATA.secure=d.secure;
+    delete DATA.recovery;delete DATA.recView;delete DATA.defaultPw;
+    DATA.meta.build=Math.max(DATA.meta.build||1,d.meta.build||1);
+    DATA.currentYear=yr.id;YSEL=yr.id;
+  }else{toast('❌ Это не похоже на файл кассы или резервную копию');return;}
+  markDirty();
+  var c=PW?decryptSecure(PW,DATA.secure):null;
+  if(c){CONTACTS=c;toast('✅ Данные импортированы');}
+  else{PW=null;CONTACTS=null;tab='adm';toast('Данные импортированы. У этого файла свой пароль — войдите в правку заново.',5500);}
+  render();
+}
+
+/* ===== сохранение файла ===== */
+function saveFile(){
+  DATA.meta.updated=dateRu(todayISO());
+  var json=JSON.stringify(DATA).replace(/</g,'\\u003c');
+  var i=__TPL__.indexOf(MS)+MS.length, j=__TPL__.indexOf(ME,i);
+  var out=__TPL__.slice(0,i)+json+__TPL__.slice(j);
+  download(baseName()+'.html',out,'text/html');
+  dirty=false;render();
+  toast('Файл скачан. Замените им старый файл на сетевом диске.',5000);
+}
+window.addEventListener('beforeunload',function(e){
+  if(dirty){e.preventDefault();e.returnValue='';}
+});
+
+/* ===== модалки ===== */
+function showModal(inner){
+  $('#modal-root').innerHTML='<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">'+inner+'</div></div>';
+}
+function closeModal(){$('#modal-root').innerHTML='';render();}
+
+
+/* ===== v13: интернет-режим (GitHub Pages) ===== */
+function pubUrl(){
+  var gh=DATA.gh;if(!gh||!gh.owner)return '';
+  return 'https://'+gh.owner+'.github.io'+((gh.repo===gh.owner+'.github.io')?'':'/'+gh.repo)+'/';
+}
+function boot(){
+  if(!REMOTE){render();return;}
+  renderWait('Загружаю данные…');
+  var x=new XMLHttpRequest();
+  x.open('GET','data.json?ts='+Date.now(),true);
+  x.onreadystatechange=function(){
+    if(x.readyState!==4)return;
+    if(x.status>=200&&x.status<300){
+      var parsed=null;try{parsed=JSON.parse(x.responseText);}catch(e){}
+      if(!parsed||!parsed.pub){renderGate('Файл данных повреждён. Сообщите казначею.');return;}
+      PUBBLOB=parsed.pub;
+      var saved=null;try{saved=localStorage.getItem(PPW_KEY);}catch(e){}
+      if(saved){var d=decryptSecure(saved,PUBBLOB);
+        if(d){DATA=d;PPW=saved;render();return;}
+        try{localStorage.removeItem(PPW_KEY);}catch(e){}}
+      renderGate();
+    }else{renderGate('Не удалось загрузить данные (код '+x.status+'). Проверьте интернет.',true);}
+  };
+  x.send();
+}
+function renderWait(msg){
+  $('#app').innerHTML='<div class="gate"><div class="gcard"><div style="font-size:44px">💰</div>'+
+    '<h2 style="margin:10px 0">Касса класса</h2><div class="hint">'+esc(msg)+'</div></div></div>';
+}
+function renderGate(err,retry){
+  var h='<div class="gate"><div class="gcard">';
+  h+='<div style="font-size:44px">💰</div><h2 style="margin:8px 0 2px">Касса класса</h2>';
+  h+='<div class="hint" style="margin-bottom:14px">Введите пароль класса — его сообщает родительский комитет.</div>';
+  if(err)h+='<div class="note" style="text-align:left;margin-bottom:10px">'+esc(err)+'</div>';
+  if(retry){h+='<button class="btn wide" onclick="boot()">Повторить</button></div></div>';$('#app').innerHTML=h;return;}
+  h+='<label class="f">Пароль класса</label>'+
+     '<input id="ppw-in" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')openParent()">';
+  h+='<label style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:14px;justify-content:center">'+
+     '<input type="checkbox" id="ppw-rem" checked style="width:auto"> Запомнить на этом устройстве</label>';
+  h+='<button class="btn wide" onclick="openParent()">Открыть кассу</button>';
+  h+='</div></div>';
+  $('#app').innerHTML=h;
+}
+function openParent(){
+  var pw=($('#ppw-in').value||'');
+  if(!pw){toast('Введите пароль');return;}
+  toast('Открываю…',6000);
+  setTimeout(function(){
+    var d=decryptSecure(pw,PUBBLOB);
+    if(!d){toast('❌ Неверный пароль');return;}
+    DATA=d;PPW=pw;
+    var rem=$('#ppw-rem');
+    if(rem&&rem.checked){try{localStorage.setItem(PPW_KEY,pw);}catch(e){}}
+    render();
+  },30);
+}
+/* --- GitHub API --- */
+function ghApi(method,path,tok,body,cb){
+  var x=new XMLHttpRequest();
+  x.open(method,'https://api.github.com'+path,true);
+  x.setRequestHeader('Accept','application/vnd.github+json');
+  x.setRequestHeader('Authorization','Bearer '+tok);
+  if(body)x.setRequestHeader('Content-Type','application/json');
+  x.onreadystatechange=function(){if(x.readyState===4){var r=null;try{r=JSON.parse(x.responseText);}catch(e){}cb(x.status,r);}};
+  try{x.send(body?JSON.stringify(body):null);}catch(e){cb(0,null);}
+}
+function getPubCfg(){
+  if(!PW||!DATA.pubSec)return null;
+  return decryptSecure(PW,DATA.pubSec);
+}
+function ghPutFile(cfg,path,contentStr,msg,done){
+  var gh=DATA.gh,api='/repos/'+gh.owner+'/'+gh.repo+'/contents/'+path;
+  ghApi('GET',api+'?ref='+gh.branch,cfg.token,null,function(st,r){
+    var body={message:msg,content:b64enc(utf8(contentStr)),branch:gh.branch};
+    if(st===200&&r&&r.sha)body.sha=r.sha;
+    ghApi('PUT',api,cfg.token,body,function(st2,r2){done(st2===200||st2===201,st2);});
+  });
+}
+function publishData(done){
+  var cfg=getPubCfg();
+  if(!cfg){toast('Публикация не настроена — откройте «☁️ Публикация» в настройках');return;}
+  var ppw=PPW||cfg.ppw;
+  if(!ppw){toast('Не задан пароль класса');return;}
+  toast('Публикую…',8000);
+  DATA.meta.updated=dateRu(todayISO());
+  var payload=JSON.stringify({v:13,pub:encryptSecure(ppw,DATA)});
+  ghPutFile(cfg,'data.json',payload,'обновление данных кассы',function(ok,st){
+    if(ok){dirty=false;render();toast('✅ Опубликовано! Родители увидят свежие данные при следующем открытии.',5000);}
+    else if(st===401||st===403){toast('❌ GitHub не принял ключ доступа ('+st+'). Проверьте токен в «☁️ Публикация».',7000);}
+    else if(st===404){toast('❌ Репозиторий не найден. Проверьте логин и название в «☁️ Публикация».',7000);}
+    else{toast('❌ Ошибка публикации (код '+st+'). Проверьте интернет.',7000);}
+    if(done)done(ok);
+  });
+}
+function shellHtml(){
+  var i=__TPL__.indexOf(MS)+MS.length, j=__TPL__.indexOf(ME,i);
+  return __TPL__.slice(0,i)+'{"stub":true}'+__TPL__.slice(j);
+}
+function pubWizard(){
+  if(!PW){toast('Сначала войдите в правку');return;}
+  var gh=DATA.gh||{owner:'',repo:'',branch:'main'};
+  var has=!!DATA.pubSec;
+  var h='<h2>☁️ Публикация в интернете<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">Разовая настройка: аккаунт GitHub, репозиторий и токен доступа. Дальше кнопка «☁️ Сохранить» будет обновлять сайт сама.</div>';
+  h+='<label class="f">Логин GitHub</label><input id="gh-o" value="'+esc(gh.owner)+'" autocapitalize="off">';
+  h+='<label class="f">Название репозитория</label><input id="gh-r" value="'+esc(gh.repo)+'" placeholder="обычно: логин.github.io" autocapitalize="off">';
+  h+='<label class="f">Токен доступа GitHub</label><input id="gh-t" type="password" placeholder="'+(has?'пусто — оставить прежний':'github_pat_…')+'">';
+  h+='<label class="f">Пароль класса (для родителей)</label><input id="gh-p1" type="password" placeholder="'+(has?'пусто — оставить прежний':'придумайте простой общий пароль')+'">';
+  h+='<label class="f">Пароль класса ещё раз</label><input id="gh-p2" type="password">';
+  h+='<div class="btnrow" style="margin-top:12px"><button class="btn grn" onclick="pubGo(true)">🚀 Опубликовать сайт</button>'+
+     (has?'<button class="btn sec" onclick="pubGo(false)">Сохранить настройки</button>':'')+'</div>';
+  if(has&&gh.owner)h+='<div class="hint" style="margin-top:10px">Ссылка для родителей: <b style="word-break:break-all">'+esc(pubUrl())+'</b></div>';
+  h+='<div class="hint" style="margin-top:8px">«Опубликовать сайт» загружает и страницу, и данные — используйте при первой настройке или после обновления версии кассы. Пароль класса скрывает все данные: без него страница ничего не показывает.</div>';
+  showModal(h);
+}
+function pubGo(full){
+  var o=$('#gh-o').value.trim(),r=$('#gh-r').value.trim();
+  if(!o||!r){toast('Заполните логин и репозиторий');return;}
+  var old=getPubCfg()||{};
+  var tok=$('#gh-t').value.trim()||old.token||'';
+  var p1=$('#gh-p1').value,p2=$('#gh-p2').value,ppw=old.ppw||'';
+  if(p1){if(p1.length<4){toast('Пароль класса слишком короткий (мин. 4 символа)');return;}
+    if(p1!==p2){toast('Пароли класса не совпадают');return;}ppw=p1;}
+  if(!tok){toast('Нужен токен доступа GitHub');return;}
+  if(!ppw){toast('Задайте пароль класса');return;}
+  DATA.gh={owner:o,repo:r,branch:'main'};
+  DATA.pubSec=encryptSecure(PW,{token:tok,ppw:ppw});
+  markDirty();closeModal();
+  if(!full){render();toast('Настройки сохранены. Теперь можно публиковать.');return;}
+  toast('Публикую сайт… это займёт до минуты',12000);
+  var cfg={token:tok,ppw:ppw};
+  ghPutFile(cfg,'index.html',shellHtml(),'страница кассы (оболочка без данных)',function(ok1,st1){
+    if(!ok1){render();toast('❌ Не удалось загрузить страницу (код '+st1+'). Проверьте логин, репозиторий и токен.',8000);return;}
+    DATA.meta.updated=dateRu(todayISO());
+    var payload=JSON.stringify({v:13,pub:encryptSecure(ppw,DATA)});
+    ghPutFile(cfg,'data.json',payload,'данные кассы (зашифрованы)',function(ok2,st2){
+      render();
+      if(!ok2){toast('❌ Страница загружена, но данные — нет (код '+st2+'). Повторите «Опубликовать сайт».',8000);return;}
+      if(REMOTE)dirty=false;
+      render();
+      showModal('<h2>Сайт опубликован 🎉<button class="x" onclick="closeModal()">✕</button></h2>'+
+        '<div class="hint">Постоянная ссылка для родителей:</div>'+
+        '<div style="text-align:center;font-size:17px;font-weight:800;margin:12px 0;word-break:break-all"><a href="'+esc(pubUrl())+'" target="_blank">'+esc(pubUrl())+'</a></div>'+
+        '<div class="hint">Первая публикация «поднимается» до 2–5 минут, потом обновления мгновенные. Сообщите родителям ссылку и пароль класса. '+
+        (REMOTE?'':'Этот локальный файл тоже сохраните («💾 Сохранить файл») — в нём теперь записаны настройки публикации.')+'</div>');
+    });
+  });
+}
+
+boot();
+
+</script></body></html>
