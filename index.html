@@ -26,6 +26,8 @@ header.hero .wrap{display:flex;flex-direction:column;gap:2px}
   margin:-38px auto 14px;padding:16px 18px;max-width:760px;text-align:center}
 .balance-card .lbl{font-size:13px;color:var(--muted)}
 .balance-card .val{font-size:32px;font-weight:800;color:var(--acc);letter-spacing:.3px}
+.balance-card.arch .val{color:var(--muted);font-size:26px}
+.balance-card.arch .lbl{color:var(--muted)}
 .balance-card .mini{display:flex;justify-content:center;gap:18px;margin-top:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .balance-card .mini b{color:var(--ink)}
 .tabs{display:flex;gap:6px;position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;margin-bottom:10px}
@@ -282,7 +284,10 @@ function render(){
   h+='<div class="sub">Учебный год '+esc(Y().year)+(DATA.meta.updated?' · <span class="updated">обновлено '+esc(DATA.meta.updated)+'</span>':'')+'</div>';
   h+='</div></header>';
   h+='<div class="wrap">';
-  h+='<div class="balance-card"><div class="lbl">Сейчас в кассе</div><div class="val">'+fmt(cashTotal())+'</div>';
+  var isCur=(YSEL===DATA.currentYear);
+  h+='<div class="balance-card'+(isCur?'':' arch')+'"><div class="lbl">'+
+     (isCur?'Сейчас в кассе':'📁 Архив · остаток на конец года')+'</div><div class="val">'+fmt(cashTotal())+'</div>';
+  if(!isCur)h+='<div class="mini"><span>Год закрыт, остаток перенесён в следующий</span></div>';
   if(!Y().expenses.length&&(Y().startBalance||0)!==0)
     h+='<div class="mini"><span>Перенос на начало года: <b>'+fmt(Y().startBalance||0)+'</b></span></div>';
   h+=
@@ -309,7 +314,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Автономная касса класса · сборка v'+(DATA.meta.build||1)+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.1'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -1280,6 +1285,31 @@ function closeModal(){$('#modal-root').innerHTML='';render();}
 
 
 /* ===== v13: интернет-режим (GitHub Pages) ===== */
+function refetchData(){
+  if(!REMOTE||!PPW||PW||dirty)return; /* казначей в правке или есть несохранённое — не трогаем */
+  var x=new XMLHttpRequest();
+  x.open('GET','data.json?ts='+Date.now(),true);
+  x.onreadystatechange=function(){
+    if(x.readyState!==4||x.status<200||x.status>=300)return;
+    var p=null;try{p=JSON.parse(x.responseText);}catch(e){}
+    if(!p||!p.pub)return;
+    var d=decryptSecure(PPW,p.pub);
+    if(!d)return;
+    if(JSON.stringify(d)!==JSON.stringify(DATA)){
+      PUBBLOB=p.pub;DATA=d;
+      var ids=DATA.years.map(function(y){return y.id;});
+      if(ids.indexOf(YSEL)<0)initYear();
+      render();toast('🔄 Данные обновились');
+    }
+  };
+  try{x.send();}catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)refetchData();});
+window.addEventListener('focus',refetchData);
+function initYear(){
+  var ids=DATA.years.map(function(y){return y.id;});
+  YSEL=(DATA.currentYear&&ids.indexOf(DATA.currentYear)>=0)?DATA.currentYear:ids[ids.length-1];
+}
 function pubUrl(){
   var gh=DATA.gh;if(!gh||!gh.owner)return '';
   return 'https://'+gh.owner+'.github.io'+((gh.repo===gh.owner+'.github.io')?'':'/'+gh.repo)+'/';
@@ -1297,7 +1327,7 @@ function boot(){
       PUBBLOB=parsed.pub;
       var saved=null;try{saved=localStorage.getItem(PPW_KEY);}catch(e){}
       if(saved){var d=decryptSecure(saved,PUBBLOB);
-        if(d){DATA=d;PPW=saved;render();return;}
+        if(d){DATA=d;PPW=saved;initYear();render();return;}
         try{localStorage.removeItem(PPW_KEY);}catch(e){}}
       renderGate();
     }else{renderGate('Не удалось загрузить данные (код '+x.status+'). Проверьте интернет.',true);}
@@ -1329,7 +1359,7 @@ function openParent(){
   setTimeout(function(){
     var d=decryptSecure(pw,PUBBLOB);
     if(!d){toast('❌ Неверный пароль');return;}
-    DATA=d;PPW=pw;
+    DATA=d;PPW=pw;initYear();
     var rem=$('#ppw-rem');
     if(rem&&rem.checked){try{localStorage.setItem(PPW_KEY,pw);}catch(e){}}
     render();
@@ -1349,12 +1379,17 @@ function getPubCfg(){
   if(!PW||!DATA.pubSec)return null;
   return decryptSecure(PW,DATA.pubSec);
 }
-function ghPutFile(cfg,path,contentStr,msg,done){
+function ghPutFile(cfg,path,contentStr,msg,done,attempt){
   var gh=DATA.gh,api='/repos/'+gh.owner+'/'+gh.repo+'/contents/'+path;
-  ghApi('GET',api+'?ref='+gh.branch,cfg.token,null,function(st,r){
+  /* &t= обходит минутный кэш GitHub, иначе можно получить устаревший sha и конфликт 409 */
+  ghApi('GET',api+'?ref='+gh.branch+'&t='+Date.now(),cfg.token,null,function(st,r){
     var body={message:msg,content:b64enc(utf8(contentStr)),branch:gh.branch};
     if(st===200&&r&&r.sha)body.sha=r.sha;
-    ghApi('PUT',api,cfg.token,body,function(st2,r2){done(st2===200||st2===201,st2);});
+    ghApi('PUT',api,cfg.token,body,function(st2,r2){
+      if((st2===409||st2===422)&&!attempt){ /* конфликт версий — обновляем sha и пробуем ещё раз */
+        setTimeout(function(){ghPutFile(cfg,path,contentStr,msg,done,1);},1500);return;}
+      done(st2===200||st2===201,st2);
+    });
   });
 }
 function publishData(done){
@@ -1408,24 +1443,47 @@ function pubGo(full){
   DATA.pubSec=encryptSecure(PW,{token:tok,ppw:ppw});
   markDirty();closeModal();
   if(!full){render();toast('Настройки сохранены. Теперь можно публиковать.');return;}
-  toast('Публикую сайт… это займёт до минуты',12000);
   var cfg={token:tok,ppw:ppw};
+  if(REMOTE){pubDoAll(cfg,true);return;}
+  /* публикуем из локального файла: сперва проверяем, нет ли на сайте более свежих данных */
+  toast('Проверяю сайт…',8000);
+  var gh=DATA.gh;
+  ghApi('GET','/repos/'+gh.owner+'/'+gh.repo+'/contents/data.json?ref='+gh.branch+'&t='+Date.now(),cfg.token,null,function(st){
+    if(st===200){
+      PENDCFG=cfg;
+      showModal('<h2>На сайте уже есть данные<button class="x" onclick="closeModal()">✕</button></h2>'+
+        '<div class="hint">Касса уже публиковалась. Если после этого вы вносили платежи прямо на сайте (например, с телефона), там данные свежее, чем в этом файле.</div>'+
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">'+
+        '<button class="btn wide grn" onclick="pubKeepSite()">Оставить данные сайта — обновить только страницу</button>'+
+        '<button class="btn wide sec" onclick="pubReplaceSite()">Заменить данными из этого файла</button></div>');
+    }else{pubDoAll(cfg,true);}
+  });
+}
+var PENDCFG=null;
+function pubKeepSite(){closeModal();pubDoAll(PENDCFG,false);}
+function pubReplaceSite(){closeModal();pubDoAll(PENDCFG,true);}
+function pubDoAll(cfg,withData){
+  toast('Публикую сайт… это займёт до минуты',12000);
   ghPutFile(cfg,'index.html',shellHtml(),'страница кассы (оболочка без данных)',function(ok1,st1){
     if(!ok1){render();toast('❌ Не удалось загрузить страницу (код '+st1+'). Проверьте логин, репозиторий и токен.',8000);return;}
+    if(!withData){render();pubDoneModal('Страница обновлена, данные сайта не тронуты. Свежие данные и резервные копии теперь берите с самого сайта.');return;}
     DATA.meta.updated=dateRu(todayISO());
-    var payload=JSON.stringify({v:13,pub:encryptSecure(ppw,DATA)});
+    var payload=JSON.stringify({v:13,pub:encryptSecure(cfg.ppw,DATA)});
     ghPutFile(cfg,'data.json',payload,'данные кассы (зашифрованы)',function(ok2,st2){
       render();
       if(!ok2){toast('❌ Страница загружена, но данные — нет (код '+st2+'). Повторите «Опубликовать сайт».',8000);return;}
       if(REMOTE)dirty=false;
       render();
-      showModal('<h2>Сайт опубликован 🎉<button class="x" onclick="closeModal()">✕</button></h2>'+
-        '<div class="hint">Постоянная ссылка для родителей:</div>'+
-        '<div style="text-align:center;font-size:17px;font-weight:800;margin:12px 0;word-break:break-all"><a href="'+esc(pubUrl())+'" target="_blank">'+esc(pubUrl())+'</a></div>'+
-        '<div class="hint">Первая публикация «поднимается» до 2–5 минут, потом обновления мгновенные. Сообщите родителям ссылку и пароль класса. '+
-        (REMOTE?'':'Этот локальный файл тоже сохраните («💾 Сохранить файл») — в нём теперь записаны настройки публикации.')+'</div>');
+      pubDoneModal('Первая публикация «поднимается» до 2–5 минут, потом обновления мгновенные. Сообщите родителям ссылку и пароль класса.'+
+        (REMOTE?'':' Этот локальный файл тоже сохраните («💾 Сохранить файл»).'));
     });
   });
+}
+function pubDoneModal(note){
+  showModal('<h2>Сайт опубликован 🎉<button class="x" onclick="closeModal()">✕</button></h2>'+
+    '<div class="hint">Постоянная ссылка для родителей:</div>'+
+    '<div style="text-align:center;font-size:17px;font-weight:800;margin:12px 0;word-break:break-all"><a href="'+esc(pubUrl())+'" target="_blank">'+esc(pubUrl())+'</a></div>'+
+    '<div class="hint">'+note+'</div>');
 }
 
 boot();
