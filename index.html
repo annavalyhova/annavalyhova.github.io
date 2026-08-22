@@ -229,7 +229,7 @@ function Y(){
 }
 function setYear(id){YSEL=id;kidsFilter='';kidQuery='';incArticle='';render();}
 var tab='sum', tTab='inc', kidQuery='', tQuery='';
-var incArticle='', incDate=todayISO(), incMethod='Сбер';
+var incArticle='', incDate=todayISO(), incMethod='Сбер', incMode='art', incKid='';
 
 /* ===== утилиты ===== */
 function $(s){return document.querySelector(s);}
@@ -348,7 +348,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.5'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.6'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -701,19 +701,129 @@ function unlock(){
 }
 
 /* --- приход --- */
+function setIncMode(m){incMode=m;render();}
+function setIncKid(v){incKid=v;render();}
+function incMethodSel(){
+  var h='<label class="f">Способ оплаты</label><select onchange="incMethod=this.value">';
+  ['Сбер','Тинькофф','ВТБ','Озон','Альфа','наличные','другое'].forEach(function(m){
+    h+='<option'+(m===incMethod?' selected':'')+'>'+m+'</option>';});
+  return h+'</select>';
+}
 function adminIncome(){
+  var h='<div class="card"><h2>➕ Записать взнос</h2>';
+  h+='<div class="btnrow" style="margin-bottom:10px">'+
+     '<button class="btn sm'+(incMode==='art'?'':' sec')+'" onclick="setIncMode(\'art\')">📚 По сбору</button>'+
+     '<button class="btn sm'+(incMode==='kid'?'':' sec')+'" onclick="setIncMode(\'kid\')">👧 По ребёнку</button></div>';
+  h+=(incMode==='kid'?adminIncomeByKid():adminIncomeByArt());
+  return h+'</div>';
+}
+function adminIncomeByKid(){
+  var kids=kidsActive();
+  if(!incKid&&kids.length)incKid=kids[0].id;
+  var k=kidById(incKid);
+  var h='<div class="grid2"><div><label class="f">Ребёнок</label><select onchange="setIncKid(this.value)">';
+  kids.forEach(function(x){h+='<option value="'+x.id+'"'+(x.id===incKid?' selected':'')+'>'+esc(x.name)+'</option>';});
+  h+='</select></div><div><label class="f">Дата</label><input type="date" value="'+incDate+'" onchange="incDate=this.value"></div></div>';
+  h+=incMethodSel();
+  if(!k)return h+'<div class="empty">В классе пока нет детей</div>';
+  h+='<label class="f">Получено от родителя, ₽ (не обязательно)</label>'+
+     '<input type="number" id="pk-got" inputmode="numeric" placeholder="впишите сумму перевода — касса проверит раскладку" oninput="pkCalc()">';
+  h+='<div class="btnrow" style="margin:10px 0 4px">'+
+     '<button class="btn sm sec" onclick="pkFill(\'debt\')">Разложить долг на сегодня</button>'+
+     '<button class="btn sm sec" onclick="pkFill(\'year\')">Разложить за весь год</button>'+
+     '<button class="btn sm gry" onclick="pkFill(\'zero\')">Очистить</button></div>';
+  h+='<h3>Сколько на какой сбор</h3>';
+  h+='<div class="hint" style="margin-bottom:4px">Поставьте галочку — сумма подставится сама. Если вписано «Получено», касса подставит не больше остатка: последний отмеченный сбор закроется частично. Любое число можно поправить руками.</div>';
+  var any=false;
+  artsActive().forEach(function(a){
+    if(!participates(a,incKid))return;
+    any=true;
+    var pd=paidBy(incKid,a.id),r=rateFor(a,incKid),yr=rateYear(a,incKid);
+    h+='<div class="row">'+
+       '<input type="checkbox" class="pk-ck" style="width:20px;flex:none;margin:0" onchange="pkTick(this)">'+
+       '<div class="nm">'+(a.birthday?'🎂 ':'')+esc(a.name)+
+       '<small>сдано '+fmt(pd)+' из '+fmt(r)+(yr!==r?' · за год '+fmt(yr):'')+'</small></div>'+
+       '<input type="number" class="pk-in" data-art="'+a.id+'" data-debt="'+Math.max(0,r-pd)+'" data-year="'+Math.max(0,yr-pd)+'"'+
+       ' inputmode="numeric" style="max-width:108px" placeholder="0" oninput="pkCalc()"></div>';
+  });
+  if(!any)h+='<div class="empty">Этот ребёнок не участвует ни в одном сборе</div>';
+  h+='<div id="pk-sum" class="ktot" style="margin-top:12px"><div class="big">Итого к записи: '+fmt(0)+'</div></div>';
+  h+='<button class="btn wide grn" onclick="pkSave()">Записать всё одной операцией</button>';
+  h+='<div class="hint">Каждая сумма запишется отдельным взносом по своему сбору — в «📒 Журнале» их можно поправить или удалить по одному. Отменить всю запись целиком можно кнопкой «↩ Отменить».</div>';
+  return h;
+}
+function pkInputs(){return Array.prototype.slice.call(document.querySelectorAll('.pk-in'));}
+function pkTick(el){
+  var inp=el.parentNode&&el.parentNode.querySelector('.pk-in');
+  if(!inp)return;
+  if(!el.checked){inp.value='';pkCalc();return;}
+  var want=+inp.getAttribute('data-debt')||0;
+  if(!want)want=+inp.getAttribute('data-year')||0;
+  var g=document.getElementById('pk-got'),got=g?parseFloat(g.value):NaN;
+  if(got>0){
+    var used=0;
+    pkInputs().forEach(function(x){if(x!==inp){var n=parseFloat(x.value);if(n>0)used+=Math.round(n);}});
+    var free=Math.max(0,Math.round(got)-used);
+    if(want>free)want=free;
+  }
+  inp.value=want>0?want:'';
+  if(!want)toast('Вся полученная сумма уже разложена по другим сборам',4000);
+  pkCalc();
+}
+function pkFill(mode){
+  pkInputs().forEach(function(el){
+    var v=mode==='debt'?+el.getAttribute('data-debt'):mode==='year'?+el.getAttribute('data-year'):0;
+    el.value=v>0?v:'';
+  });
+  pkCalc();
+}
+function pkCalc(){
+  var s=0;
+  pkInputs().forEach(function(el){
+    var n=parseFloat(el.value);
+    if(n>0)s+=Math.round(n);
+    var ck=el.parentNode&&el.parentNode.querySelector('.pk-ck');
+    if(ck)ck.checked=(n>0);
+  });
+  var g=document.getElementById('pk-got'),box=document.getElementById('pk-sum');
+  if(!box)return;
+  var got=g?parseFloat(g.value):NaN;
+  var h='<div class="big">Итого к записи: '+fmt(s)+'</div>';
+  var ok=false;
+  if(got>0){
+    var d=Math.round(got)-s;
+    ok=(d===0);
+    h+='<div class="sub">'+(d===0?'Совпадает с полученной суммой ✓':d>0?'Осталось разложить '+fmt(d):'Разложено больше полученного на '+fmt(-d))+'</div>';
+  }
+  box.className='ktot'+(ok?' done':'');
+  box.innerHTML=h;
+}
+function pkSave(){
+  var k=kidById(incKid);
+  if(!k){toast('Выберите ребёнка');return;}
+  var items=[],tot=0;
+  pkInputs().forEach(function(el){
+    var n=parseFloat(el.value);
+    if(n>0){items.push({art:el.getAttribute('data-art'),sum:Math.round(n)});tot+=Math.round(n);}
+  });
+  if(!items.length){toast('Не заполнена ни одна сумма');return;}
+  if(!confirm('Записать '+items.length+' взнос(ов) от «'+k.name+'» на общую сумму '+fmt(tot)+'?'))return;
+  snapshot('взносы одним платежом: '+k.name);
+  items.forEach(function(i){
+    Y().incomes.push({id:uid(),date:incDate,child:incKid,article:i.art,amount:i.sum,method:incMethod});
+  });
+  markDirty();render();toast('Записано: '+k.name.split(' ')[0]+' +'+fmt(tot));
+}
+function adminIncomeByArt(){
   var arts=artsActive();
   if(!incArticle&&arts.length)incArticle=arts[0].id;
-  var h='<div class="card"><h2>➕ Записать взнос</h2><div class="grid2">';
+  var h='<div class="grid2">';
   h+='<div><label class="f">Сбор</label><select onchange="incArticle=this.value;render()">';
   arts.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===incArticle?' selected':'')+'>'+esc(a.name)+' ('+rateText(a)+')</option>';});
   h+='</select></div>';
   h+='<div><label class="f">Дата</label><input type="date" value="'+incDate+'" onchange="incDate=this.value"></div>';
   h+='</div>';
-  h+='<label class="f">Способ оплаты</label><select onchange="incMethod=this.value">';
-  ['Сбер','Тинькофф','ВТБ','Озон','Альфа','наличные','другое'].forEach(function(m){
-    h+='<option'+(m===incMethod?' selected':'')+'>'+m+'</option>';});
-  h+='</select>';
+  h+=incMethodSel();
   var a=artById(incArticle);
   if(a){
     h+='<h3>Отметить оплату — '+esc(a.name)+'</h3><div class="hint">'+
@@ -734,7 +844,6 @@ function adminIncome(){
         '<button class="btn sm sec" onclick="addIncCustom(\''+k.id+'\')">± сумма</button></div></div>';
     });
   }
-  h+='</div>';
   return h;
 }
 function addInc(kidId,amount){
