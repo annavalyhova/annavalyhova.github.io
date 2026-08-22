@@ -50,6 +50,13 @@ header.hero .wrap{display:flex;flex-direction:column;gap:2px}
 .pbar{height:8px;background:#eef0f5;border-radius:99px;overflow:hidden;margin:6px 0 4px}
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#8f6ee8);border-radius:99px}
 .pbar.done i{background:var(--green)}
+.ktot{background:var(--green-soft);color:var(--ink);border:1px solid #c9e8da;border-radius:14px;padding:11px 14px;margin:0 0 10px}
+.ktot .cap{font-size:12.5px;font-weight:700;color:var(--green)}
+.ktot .big{font-size:19px;font-weight:800;margin-top:2px;letter-spacing:.2px;color:var(--ink)}
+.ktot .sub{font-size:12.5px;color:var(--ink);margin-top:5px}
+.ktot .bar{height:6px;border-radius:99px;background:#fff;margin-top:9px;overflow:hidden}
+.ktot .bar i{display:block;height:100%;background:var(--green);border-radius:99px}
+.ktot.done{border-color:var(--green)}
 .art-meta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);flex-wrap:wrap;gap:4px}
 .money{font-weight:700;white-space:nowrap}
 .money.neg{color:var(--red)} .money.pos{color:var(--green)}
@@ -262,9 +269,36 @@ function artById(id){for(var i=0;i<Y().articles.length;i++)if(Y().articles[i].id
 function artsActive(){return Y().articles.filter(function(a){return a.active!==false;});}
 function participates(art,kidId){return (art.excluded||[]).indexOf(kidId)<0;}
 function paidBy(kidId,artId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId&&x.article===artId)s+=x.amount;});return s;}
+function artsScope(){var a=artsActive();return a.length?a:Y().articles;}
+function paidScope(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=paidBy(kidId,a.id);});return s;}
+function expScope(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=rateFor(a,kidId);});return s;}
+function rateYear(a,kidId){return (isMonthly(a)&&monthsTotal(a))?a.monthly.step*monthsTotal(a):rateFor(a,kidId);}
+function expYear(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=rateYear(a,kidId);});return s;}
 function paidTotal(kidId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId)s+=x.amount;});return s;}
-function rateFor(a,kidId){return (a.alt&&(a.altKids||[]).indexOf(kidId)>=0)?a.alt.rate:a.rate;}
-function rateText(a){return a.alt?fmt(a.rate)+' / '+fmt(a.alt.rate):fmt(a.rate);}
+var MONS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+function ymNow(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
+function ymNum(v){var p=String(v||'').split('-');return (+p[0])*12+(+p[1]-1);}
+function ymOk(v){return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(v||''));}
+function ymShift(v,m){var n=ymNum(v)+m;return Math.floor(n/12)+'-'+('0'+(n%12+1)).slice(-2);}
+function ymLabel(v){if(!ymOk(v))return String(v||'');var p=v.split('-');return MONS[(+p[1])-1]+' '+p[0];}
+function isMonthly(a){return !!(a&&a.monthly&&ymOk(a.monthly.from)&&a.monthly.step>0);}
+function monthsTotal(a){return isMonthly(a)&&ymOk(a.monthly.to)?Math.max(1,ymNum(a.monthly.to)-ymNum(a.monthly.from)+1):0;}
+function monthsDone(a){
+  if(!isMonthly(a))return 0;
+  var n=ymNum(ymNow())-ymNum(a.monthly.from)+1,cap=monthsTotal(a);
+  if(n<0)n=0; if(cap&&n>cap)n=cap;
+  return n;
+}
+function rateFor(a,kidId){
+  if(isMonthly(a))return a.monthly.step*monthsDone(a);
+  return (a.alt&&(a.altKids||[]).indexOf(kidId)>=0)?a.alt.rate:a.rate;
+}
+function rateText(a){
+  if(isMonthly(a)){var n=monthsDone(a);
+    return n?fmt(rateFor(a))+' (по '+fmt(a.monthly.step)+' × '+n+' мес.)':'по '+fmt(a.monthly.step)+' в месяц, с '+ymLabel(a.monthly.from);}
+  return a.alt?fmt(a.rate)+' / '+fmt(a.alt.rate):fmt(a.rate);
+}
+function payStep(a,kidId){return isMonthly(a)?a.monthly.step:rateFor(a,kidId);}
 function expectedFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=rateFor(a,kidId);});return s;}
 function debtFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=(rateFor(a,kidId)-paidBy(kidId,a.id));});return s;}
 function artCollected(artId){var s=0;Y().incomes.forEach(function(x){if(x.article===artId)s+=x.amount;});return s;}
@@ -314,7 +348,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.4'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.5'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -392,6 +426,16 @@ function kidsListHTML(){
   var list=kidsActive().filter(function(k){return !q||k.name.toLowerCase().indexOf(q)>=0;});
   var a=kidsFilter?artById(kidsFilter):null;
   if(a){
+    var got=0,exp=0;
+    list.forEach(function(k){if(!participates(a,k.id))return;got+=paidBy(k.id,a.id);exp+=rateFor(a,k.id);});
+    var left=Math.max(0,exp-got),pct=exp>0?Math.min(100,Math.round(got/exp*100)):0;
+    h+='<div class="ktot'+(exp>0&&left<=0?' done':'')+'">'+
+       '<div class="cap">'+esc(a.name)+(q?' · найдено: '+list.length+' из '+kidsActive().length:'')+'</div>'+
+       '<div class="big">Сдано '+fmt(got)+' из '+fmt(exp)+'</div>'+
+       '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+       '<div class="sub">'+(exp<=0?'Сбор ещё не начался':left>0?'Осталось собрать '+fmt(left)+' · '+pct+'%':'Собрано полностью ✓')+'</div></div>';
+  }
+  if(a){
     var full=0,part=0,none=0;
     list.forEach(function(k){
       if(!participates(a,k.id))return;
@@ -416,11 +460,11 @@ function kidsListHTML(){
         sub = (p>0&&p<r ? 'сдано '+fmt(p)+' из '+fmt(r) : '')+(a.alt?(p>0&&p<r?' · ':'')+tierLabel(a,k.id):'');
       }
     }else{
-      var d=debtFor(k.id), paid=paidTotal(k.id);
+      var paid=paidScope(k.id), d=expScope(k.id)-paid;
       chip = d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
            : d<0 ? '<span class="chip b">переплата '+fmt(-d)+'</span>'
                  : '<span class="chip g">всё сдано ✓</span>';
-      sub = 'сдано за год: '+fmt(paid);
+      sub = 'сдано '+fmt(paid)+' из '+fmt(expYear(k.id))+' за год';
     }
     h+='<div class="row" onclick="openKid(\''+k.id+'\')" style="cursor:pointer">'+
        '<div class="nm">'+esc(k.name)+(sub?'<small>'+sub+'</small>':'')+'</div>'+chip+'</div>';
@@ -436,6 +480,13 @@ function openKid(id){
     h+='<div class="kid-contact"><div>📞 '+esc(c.phone||'—')+'</div><div>💳 Перевод от: '+esc(c.from||'—')+'</div><div>🏦 Банк: '+esc(c.bank||'—')+'</div></div>';
   }
   h+='<h3>По сборам</h3>';
+  var kp=paidScope(id),ky=expYear(id),kn=expScope(id);
+  var kleft=Math.max(0,ky-kp),kpct=ky>0?Math.min(100,Math.round(kp/ky*100)):0;
+  h+='<div class="ktot'+(ky>0&&kleft<=0?' done':'')+'">'+
+     '<div class="big">Всего сдано '+fmt(kp)+' из '+fmt(ky)+' за год</div>'+
+     '<div class="bar"><i style="width:'+kpct+'%"></i></div>'+
+     '<div class="sub">'+(ky<=0?'Сборы ещё не объявлены':kleft>0?'Осталось '+fmt(kleft)+' · '+kpct+'%':'Всё сдано ✓')+
+     (kn!==ky?' · начислено на сегодня '+fmt(kn):'')+'</div></div>';
   artsActive().forEach(function(a){
     var chip;
     if(!participates(a,id))chip='<span class="chip n">не участвует</span>';
@@ -473,6 +524,10 @@ function openArt(id){
   });
   var h='<h2>'+(a.birthday?'🎂 ':'')+esc(a.name)+'<button class="x" onclick="closeModal()">✕</button></h2>';
   h+='<div class="hint">Ставка '+rateText(a)+' с человека'+(a.active===false?' · сбор в архиве':'')+'</div>';
+  if(isMonthly(a))h+='<div class="hint">📅 Ежемесячный сбор: по '+fmt(a.monthly.step)+' в месяц, с '+ymLabel(a.monthly.from)+
+    (ymOk(a.monthly.to)?' по '+ymLabel(a.monthly.to):'')+'. '+
+    (monthsDone(a)?'Идёт '+monthsDone(a)+'-й месяц'+(monthsTotal(a)?' из '+monthsTotal(a):'')+' — ставка увеличивается сама, первого числа каждого месяца.'
+                  :'Сбор ещё не начался — ставка появится '+ymLabel(a.monthly.from)+'.')+'</div>';
   h+='<div class="btnrow" style="margin:8px 0 4px">'+
      '<span class="chip g">сдали: '+full.length+'</span>'+
      '<span class="chip a">частично: '+part.length+'</span>'+
@@ -661,15 +716,21 @@ function adminIncome(){
   h+='</select>';
   var a=artById(incArticle);
   if(a){
-    h+='<h3>Отметить оплату — '+esc(a.name)+'</h3><div class="hint">Кнопка «+ставка» записывает ставку ребёнка ('+rateText(a)+'), «± сумма» — любую другую (частичную оплату или доплату). Ошибочный взнос можно исправить или удалить во вкладке «📒 Журнал».</div>';
+    h+='<h3>Отметить оплату — '+esc(a.name)+'</h3><div class="hint">'+
+      (isMonthly(a)
+        ?'Сбор ежемесячный. Кнопка «+'+a.monthly.step+'» записывает взнос за один месяц, «+долг» — всё, что семья не доплатила с начала сбора, «± сумма» — любую другую.'
+        :'Кнопка «+ставка» записывает ставку ребёнка ('+rateText(a)+'), «± сумма» — любую другую (частичную оплату или доплату).')+
+      ' Ошибочный взнос можно исправить или удалить во вкладке «📒 Журнал».</div>';
     kidsActive().forEach(function(k){
       if(!participates(a,k.id)){
         h+='<div class="row"><div class="nm inactive">'+esc(k.name)+'</div><span class="chip n">не участвует</span></div>';return;
       }
-      var p=paidBy(k.id,a.id),r=rateFor(a,k.id);
+      var p=paidBy(k.id,a.id),r=rateFor(a,k.id),ps=payStep(a,k.id),due=r-p;
       var st=p>=r?'<span class="chip g">'+fmt(p)+' ✓</span>':p>0?'<span class="chip a">'+fmt(p)+'</span>':'<span class="chip r">0</span>';
+      if(isMonthly(a)&&due>0)st+=' <span class="chip r">долг '+fmt(due)+'</span>';
       h+='<div class="row"><div class="nm">'+esc(k.name)+(a.alt?'<small>'+tierLabel(a,k.id)+'</small>':'')+'</div><div class="btnrow">'+st+
-        '<button class="btn sm sec" onclick="addInc(\''+k.id+'\','+r+')">+'+r+'</button>'+
+        (ps>0?'<button class="btn sm sec" onclick="addInc(\''+k.id+'\','+ps+')">+'+ps+'</button>':'')+
+        (isMonthly(a)&&due>0&&due!==ps?'<button class="btn sm sec" onclick="addInc(\''+k.id+'\','+due+')">+долг '+due+'</button>':'')+
         '<button class="btn sm sec" onclick="addIncCustom(\''+k.id+'\')">± сумма</button></div></div>';
     });
   }
@@ -912,7 +973,7 @@ function adminArts(){
   live.concat(arch).forEach(function(a){
     if(a.active===false&&!divider){divider=true;h+='<h3 style="color:var(--muted)">🗄 В архиве ('+arch.length+')</h3>';}
     var parts=kidsActive().filter(function(k){return participates(a,k.id);}).length;
-    h+='<div class="row'+(a.active===false?' inactive':'')+'"><div class="nm" style="cursor:pointer" onclick="openArt(\''+a.id+'\')">'+(a.birthday?'🎂 ':'')+esc(a.name)+
+    h+='<div class="row'+(a.active===false?' inactive':'')+'"><div class="nm" style="cursor:pointer" onclick="openArt(\''+a.id+'\')">'+(a.birthday?'🎂 ':'')+(isMonthly(a)?'📅 ':'')+esc(a.name)+
        '<small>'+rateText(a)+' с человека · участвуют: '+parts+' из '+kidsActive().length+(a.active===false?' · в архиве':'')+'</small></div>'+
        '<div class="btnrow"><button class="btn sm sec" onclick="editArt(\''+a.id+'\')">✎</button>'+
        '<button class="btn sm sec" onclick="partArt(\''+a.id+'\')">👥</button>'+
@@ -947,6 +1008,13 @@ function editArt(id){
      '<div class="grid2"><div><label class="f">Цена варианта 2, ₽</label><input id="a-alt-rate" type="number" inputmode="numeric" value="'+(a.alt?a.alt.rate:'')+'" placeholder="пусто = без варианта"></div>'+
      '<div><label class="f">Название варианта 2</label><input id="a-alt-lab" value="'+esc(a.alt?a.alt.label:'')+'" placeholder="мини-версия"></div></div>';
   h+='<div class="hint">Если у сбора две цены (напр., полный комплект и мини), заполните второй вариант. Потом кнопкой 💠 в списке сборов распределите, кто какой вариант взял.</div>';
+  var mo=a.monthly||{};
+  h+='<h3>📅 Ежемесячный сбор (не обязательно)</h3>'+
+     '<div class="checkrow"><input type="checkbox" id="a-mo"'+(isMonthly(a)?' checked':'')+'><label for="a-mo">Ставка увеличивается сама каждый месяц</label></div>'+
+     '<div class="grid2"><div><label class="f">Взнос за месяц, ₽</label><input id="a-mo-step" type="number" inputmode="numeric" value="'+(mo.step||'')+'" placeholder="350"></div>'+
+     '<div><label class="f">Первый месяц</label><input id="a-mo-from" type="month" value="'+esc(mo.from||'')+'" placeholder="2026-09"></div></div>'+
+     '<label class="f">Последний месяц (не обяз.)</label><input id="a-mo-to" type="month" value="'+esc(mo.to||'')+'" placeholder="2027-05">'+
+     '<div class="hint">Для сборов вроде хознужд, где семьи платят каждый месяц. Ставка сама становится больше на сумму взноса первого числа каждого месяца — вручную править ничего не нужно и сохранять тоже. После последнего месяца рост прекращается. Если поле месяца вводится вручную, формат такой: 2026-09.</div>';
   h+='<div class="checkrow" style="margin-top:10px"><input type="checkbox" id="a-bd"'+(a.birthday?' checked':'')+'><label for="a-bd">🎂 Особый тип: сбор на дни рождения детей</label></div>'+
   '<div class="hint" style="margin:-2px 0 4px 30px">Приложение не угадывает тип по названию, поэтому галочка есть у каждого сбора — но нужна она обычно только одному: у него появляются отметки «подарок вручён» и связь с вкладкой 🎂 ДР. У обычных сборов оставьте её пустой.</div>';
   h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Напоминать о сборе на главной странице — напоминание видят все и оно висит, пока по сбору не появится первый расход</label></div>';
@@ -955,18 +1023,31 @@ function editArt(id){
 }
 function saveArt(id){
   var name=$('#a-name').value.trim(),rate=parseFloat($('#a-rate').value);
+  var moOn=$('#a-mo').checked,moStep=parseFloat($('#a-mo-step').value),moFrom=$('#a-mo-from').value.trim(),moTo=$('#a-mo-to').value.trim();
   if(!name){toast('Укажите название');return;}
-  if(!(rate>=0)){toast('Укажите ставку (можно 0)');return;}
+  if(moOn){
+    if(!(moStep>0)){toast('Укажите взнос за месяц');return;}
+    if(!ymOk(moFrom)){toast('Укажите первый месяц сбора в формате 2026-09');return;}
+    if(moTo&&!ymOk(moTo)){toast('Последний месяц указан неверно — формат 2027-05');return;}
+    if(moTo&&ymNum(moTo)<ymNum(moFrom)){toast('Последний месяц раньше первого');return;}
+  }else if(!(rate>=0)){toast('Укажите ставку (можно 0)');return;}
   var bd=$('#a-bd').checked,nt=$('#a-nt').checked;
   var altRate=parseFloat($('#a-alt-rate').value),altLab=$('#a-alt-lab').value.trim(),mainLab=$('#a-lab').value.trim();
+  var baseRate=(rate>=0)?Math.round(rate):0;
   snapshot(id?'правка сбора':'новый сбор');
   var a;
-  if(id){a=artById(id);a.name=name;a.rate=Math.round(rate);a.birthday=bd;a.notice=nt;}
-  else{a={id:uid(),name:name,rate:Math.round(rate),active:true,birthday:bd,notice:nt,excluded:[],gifts:[]};Y().articles.push(a);}
+  if(id){a=artById(id);a.name=name;a.rate=baseRate;a.birthday=bd;a.notice=nt;}
+  else{a={id:uid(),name:name,rate:baseRate,active:true,birthday:bd,notice:nt,excluded:[],gifts:[]};Y().articles.push(a);}
   a.label=mainLab||undefined;
-  if(altRate>0){a.alt={rate:Math.round(altRate),label:altLab||'вариант 2'};a.altKids=a.altKids||[];}
+  if(altRate>0&&!moOn){a.alt={rate:Math.round(altRate),label:altLab||'вариант 2'};a.altKids=a.altKids||[];}
   else{delete a.alt;delete a.altKids;}
-  markDirty();closeModal();render();toast('Сохранено');
+  if(moOn){
+    a.monthly={step:Math.round(moStep),from:moFrom};
+    if(ymOk(moTo))a.monthly.to=moTo;
+    a.rate=Math.round(moStep);
+  }else delete a.monthly;
+  markDirty();closeModal();render();
+  toast(moOn?'Сохранено. Сейчас ставка '+rateText(a):'Сохранено');
 }
 function tierArt(id){
   var a=artById(id);if(!a||!a.alt)return;
@@ -1210,7 +1291,7 @@ function newYearModal(){
   h+='<label class="f">Стартовый баланс (перенос), ₽</label><input id="ny-start" type="number" value="'+cashTotal()+'">';
   h+='<div class="hint">Подставлен текущий остаток кассы года «'+esc(cy.className)+' '+esc(cy.year)+'».</div>';
   h+='<div class="checkrow" style="margin-top:8px"><input type="checkbox" id="ny-kids" checked><label for="ny-kids">Перенести список детей (контакты сохранятся)</label></div>';
-  h+='<div class="checkrow"><input type="checkbox" id="ny-arts" checked><label for="ny-arts">Перенести сборы со ставками (без платежей и подарков)</label></div>';
+  h+='<div class="checkrow"><input type="checkbox" id="ny-arts" checked><label for="ny-arts">Перенести сборы со ставками (без платежей и подарков). У ежемесячных сборов месяцы сдвинутся на год вперёд — проверьте их после создания.</label></div>';
   h+='<button class="btn wide" onclick="createYear()">Создать год</button>';
   showModal(h);
 }
@@ -1222,7 +1303,10 @@ function createYear(){
   var kids=$('#ny-kids').checked?src.children.filter(function(k){return k.active!==false;})
     .map(function(k){return {id:k.id,name:k.name,bday:k.bday,active:true};}):[];
   var arts=$('#ny-arts').checked?src.articles.filter(function(a){return a.active!==false;})
-    .map(function(a){return {id:uid(),name:a.name,rate:a.rate,active:true,birthday:!!a.birthday,excluded:(a.excluded||[]).slice(),gifts:[]};}):[];
+    .map(function(a){
+      var n={id:uid(),name:a.name,rate:a.rate,active:true,birthday:!!a.birthday,excluded:(a.excluded||[]).slice(),gifts:[]};
+      if(isMonthly(a)){n.monthly={step:a.monthly.step,from:ymShift(a.monthly.from,12)};if(ymOk(a.monthly.to))n.monthly.to=ymShift(a.monthly.to,12);}
+      return n;}):[];
   DATA.years.push({id:nid,className:cls,year:yl,
     startBalance:Math.round(parseFloat($('#ny-start').value)||0),
     startNote:'Стартовый баланс — остаток кассы, перенесённый из года «'+src.className+' '+src.year+'».',
