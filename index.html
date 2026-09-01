@@ -48,7 +48,6 @@ header.hero .wrap{display:flex;flex-direction:column;gap:2px}
 .chip.a{background:var(--amber-soft);color:var(--amber)}
 .chip.n{background:#eef0f5;color:var(--muted)}
 .chip.yr{background:#c9f2dd;color:#0b7a4d;box-shadow:inset 0 0 0 1px rgba(11,122,77,.2)}
-.chip.yr .st{font-size:11px;vertical-align:1px;margin-right:1px}
 .pbar{height:8px;background:#eef0f5;border-radius:99px;overflow:hidden;margin:6px 0 4px}
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#8f6ee8);border-radius:99px}
 .pbar.done i{background:var(--green)}
@@ -423,7 +422,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.10'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.12'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -537,7 +536,7 @@ function kidsListHTML(){
     }else{
       var paid=paidScope(k.id), yr=expYear(k.id), d=expScope(k.id)-paid;
       chip = yr<=0 ? '<span class="chip n">сборов пока нет</span>'
-           : paid>=yr ? '<span class="chip yr"><span class="st">⭐</span> всё сдано за год '+fmt(yr)+'</span>'
+           : paid>=yr ? '<span class="chip yr">всё сдано за год '+fmt(yr)+' ✓</span>'
            : d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
            : d<0 ? '<span class="chip b">всё сдано по текущим сборам ✓ с переплатой</span>'
                  : '<span class="chip b">всё сдано по текущим сборам ✓</span>';
