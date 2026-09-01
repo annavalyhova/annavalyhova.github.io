@@ -323,6 +323,8 @@ function debtorsCount(){var n=0;kidsActive().forEach(function(k){if(debtFor(k.id
 function artName(id){if(!id)return 'Общая касса';var a=artById(id);return a?a.name:'(удалённая статья)';}
 function monName(v){return ymOk(v)?MONS[(+String(v).split('-')[1])-1]:String(v||'');}
 function cap(s){s=String(s||'');return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+var MONS3=['Янв','Фев','Мрт','Апр','Май','Июн','Июл','Авг','Сент','Окт','Нояб','Дек'];
+function monShort(v){return ymOk(v)?MONS3[(+String(v).split('-')[1])-1]:String(v||'');}
 function noticeLine(a,parts,need,label,closed){
   var ok=0;parts.forEach(function(k){if(paidBy(k.id,a.id)>=need)ok++;});
   var no=parts.length-ok;
@@ -335,8 +337,8 @@ function noticeCounts(a,parts,closed){
   if(isMonthly(a)){
     var n=monthsDone(a),step=a.monthly.step;
     if(n<=0)return '<div class="nsub"><span class="chip n">сбор ещё не начался</span></div>';
-    var h=noticeLine(a,parts,step*n,cap(monName(ymShift(a.monthly.from,n-1))),closed);
-    if(n>1)h+=noticeLine(a,parts,step*(n-1),cap(monName(ymShift(a.monthly.from,n-2)))+' и раньше',closed);
+    var h=noticeLine(a,parts,step*n,monShort(ymShift(a.monthly.from,n-1)),closed);
+    if(n>1)h+=noticeLine(a,parts,step*(n-1),monShort(ymShift(a.monthly.from,n-2))+' и ранее',closed);
     return h;
   }
   return noticeLine(a,parts,rateFor(a),'',closed);
@@ -421,7 +423,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.9'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.10'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
