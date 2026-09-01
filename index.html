@@ -47,6 +47,8 @@ header.hero .wrap{display:flex;flex-direction:column;gap:2px}
 .chip.b{background:var(--blue-soft);color:var(--blue)}
 .chip.a{background:var(--amber-soft);color:var(--amber)}
 .chip.n{background:#eef0f5;color:var(--muted)}
+.chip.yr{background:#c9f2dd;color:#0b7a4d;box-shadow:inset 0 0 0 1px rgba(11,122,77,.2)}
+.chip.yr .st{font-size:11px;vertical-align:1px;margin-right:1px}
 .pbar{height:8px;background:#eef0f5;border-radius:99px;overflow:hidden;margin:6px 0 4px}
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#8f6ee8);border-radius:99px}
 .pbar.done i{background:var(--green)}
@@ -76,6 +78,15 @@ label.f{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin
 .notice-card .nico{font-size:22px;line-height:1}
 .notice-card .ntx{font-size:14px;color:#7a4d0d}
 .notice-card .nsub{margin-top:5px}
+.notice-card .nsub2{margin-top:3px;font-size:12.5px;opacity:.85}
+.notice-card .nx{margin-left:auto;flex:none;border:0;background:rgba(122,77,13,.10);color:#7a4d0d;
+  border-radius:9px;padding:5px 9px;font-size:14px;font-weight:700;line-height:1;cursor:pointer}
+.notice-card .nx:hover{background:rgba(122,77,13,.2)}
+.notice-card.off{background:#f4f5f9;border-color:#e0e3ed;box-shadow:none}
+.notice-card.off .ntx{color:var(--muted)}
+.notice-card.off .nico{filter:grayscale(1);opacity:.5}
+.notice-card.off .nx{background:#e6e8f0;color:#7a8095}
+.notice-card.off .nx:hover{background:#d8dbe6}
 .btn.grn{background:var(--green)} .btn.red{background:var(--red-soft);color:var(--red)}
 .btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
 .btn.wide{width:100%;margin-top:12px}
@@ -96,6 +107,8 @@ label.f{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin
 .exp-item .dt{font-size:12px;color:var(--muted)}
 .exp-item .ds{font-size:14px;margin-top:2px}
 .tag{display:inline-block;background:var(--acc-soft);color:var(--acc);border-radius:7px;padding:1px 8px;font-size:11.5px;font-weight:700;margin-right:6px}
+.tag.pos{background:var(--green-soft);color:var(--green)}
+.tag.neg{background:var(--red-soft);color:var(--red)}
 .savebar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;box-shadow:0 -4px 20px rgba(40,50,100,.15);padding:10px 14px}
 .savebar .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px}
 .savebar .tx{flex:1;font-size:13px;font-weight:600;color:var(--amber)}
@@ -228,7 +241,7 @@ function Y(){
   return DATA.years[0];
 }
 function setYear(id){YSEL=id;kidsFilter='';kidQuery='';incArticle='';render();}
-var tab='sum', tTab='inc', kidQuery='', tQuery='';
+var tab='sum', tTab='inc', kidQuery='', tQuery='', logFilter='all';
 var incArticle='', incDate=todayISO(), incMethod='Сбер', incMode='art', incKid='';
 
 /* ===== утилиты ===== */
@@ -308,6 +321,49 @@ function sumExpenses(){var s=0;Y().expenses.forEach(function(x){s+=x.amount;});r
 function cashTotal(){return (Y().startBalance||0)+sumIncomes()-sumExpenses();}
 function debtorsCount(){var n=0;kidsActive().forEach(function(k){if(debtFor(k.id)>0)n++;});return n;}
 function artName(id){if(!id)return 'Общая касса';var a=artById(id);return a?a.name:'(удалённая статья)';}
+function monName(v){return ymOk(v)?MONS[(+String(v).split('-')[1])-1]:String(v||'');}
+function cap(s){s=String(s||'');return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+function noticeLine(a,parts,need,label,closed){
+  var ok=0;parts.forEach(function(k){if(paidBy(k.id,a.id)>=need)ok++;});
+  var no=parts.length-ok;
+  return '<div class="nsub">'+(label?'<b>'+esc(label)+':</b> ':'')+
+    '<span class="chip g">сдали: '+ok+'</span> '+
+    (no?'<span class="chip r">'+(closed?'не сдали: ':'осталось: ')+no+'</span>'
+       :'<span class="chip g">'+(label?'закрыли все ✓':'все сдали ✓')+'</span>')+'</div>';
+}
+function noticeCounts(a,parts,closed){
+  if(isMonthly(a)){
+    var n=monthsDone(a),step=a.monthly.step;
+    if(n<=0)return '<div class="nsub"><span class="chip n">сбор ещё не начался</span></div>';
+    var h=noticeLine(a,parts,step*n,cap(monName(ymShift(a.monthly.from,n-1))),closed);
+    if(n>1)h+=noticeLine(a,parts,step*(n-1),cap(monName(ymShift(a.monthly.from,n-2)))+' и раньше',closed);
+    return h;
+  }
+  return noticeLine(a,parts,rateFor(a),'',closed);
+}
+function noticeMonth(a){
+  var from=a.monthly.from,to=a.monthly.to,now=ymNow(),nx=ymShift(now,1);
+  if(ymOk(to)&&ymNum(now)>ymNum(to))return {mode:'over',label:monName(to)};
+  if(ymOk(to)&&ymNum(nx)>ymNum(to))return {mode:'last',label:monName(to)};
+  if(ymNum(nx)<ymNum(from))return {mode:'soon',label:monName(from)};
+  return {mode:'next',label:monName(nx)};
+}
+function noticeClose(ev,id){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  var a=artById(id); if(!a)return;
+  if(!confirm('Закрыть сбор «'+a.name+'»?\n\nПлашка станет серой и останется висеть со списком тех, кто не сдал. Когда сдадут все — уйдёт сама. Убрать её раньше можно вторым нажатием ✕.'))return;
+  snapshot('сбор закрыт: '+a.name);
+  a.nclosed=true;markDirty();render();
+  toast('Сбор закрыт. Нажмите «'+(REMOTE?'☁️ Сохранить':'💾 Сохранить файл')+'», чтобы родители увидели изменение.',5200);
+}
+function noticeOff(ev,id){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  var a=artById(id); if(!a)return;
+  if(!confirm('Убрать плашку сбора «'+a.name+'» с главной страницы?\n\nСам сбор и все взносы останутся на месте — исчезнет только напоминание. Вернуть можно галочкой в правке сбора.'))return;
+  snapshot('плашка убрана: '+a.name);
+  a.notice=false;delete a.nclosed;markDirty();render();
+  toast('Плашка убрана. Нажмите «'+(REMOTE?'☁️ Сохранить':'💾 Сохранить файл')+'», чтобы родители увидели изменение.',5200);
+}
 
 /* ===== главный рендер ===== */
 function render(){
@@ -330,13 +386,30 @@ function render(){
   '</select></div></div>';
 
   artsActive().forEach(function(a){
-    if(!a.notice||artSpent(a.id)>0)return;
+    if(!a.notice)return;
+    var closed=!!a.nclosed;
     var parts=kidsActive().filter(function(k){return participates(a,k.id);});
     var full=0;parts.forEach(function(k){if(paidBy(k.id,a.id)>=rateFor(a,k.id))full++;});
     var rest=parts.length-full;
-    h+='<div class="notice-card" onclick="openArt(\''+a.id+'\')">'+
-       '<span class="nico">📣</span><div class="ntx"><b>Идёт сбор: '+esc(a.name)+'</b> — '+rateText(a)+' с человека'+
-       '<div class="nsub"><span class="chip g">сдали: '+full+'</span> <span class="chip '+(rest?'r':'g')+'">'+(rest?'осталось: '+rest:'все сдали ✓')+'</span></div></div></div>';
+    if(closed&&rest<=0)return; /* закрытый сбор уходит сам, когда сдали все */
+    var ttl,note,qn='«'+esc(a.name)+'»',per=isMonthly(a)?'по '+fmt(a.monthly.step)+' в месяц':'';
+    if(closed){
+      ttl='Сбор закрыт: '+esc(a.name);
+      note=(isMonthly(a)?per:rateText(a)+' с человека')+' · плашка уйдёт, когда сдадут все';
+    }else if(isMonthly(a)){
+      var nm=noticeMonth(a);
+      if(nm.mode==='over'){ttl='Сбор '+qn+' завершён';note='Все месяцы пройдены — плашку можно убрать.';}
+      else if(nm.mode==='last'){ttl='Идёт последний месяц сбора '+qn+' — '+nm.label;note='Предыдущие месяцы желательно закрыть · '+per;}
+      else if(nm.mode==='soon'){ttl='Сбор на '+qn+' ещё не начался';note='Первый месяц — '+nm.label+' · '+per;}
+      else{ttl='Открыт сбор на '+qn+' за '+nm.label;note='Предыдущие месяцы желательно закрыть · '+per;}
+    }else{ttl='Идёт сбор: '+esc(a.name);note=rateText(a)+' с человека';}
+    h+='<div class="notice-card'+(closed?' off':'')+'" onclick="openArt(\''+a.id+'\')">'+
+       '<span class="nico">'+(closed?'📋':'📣')+'</span><div class="ntx"><b>'+ttl+'</b>'+
+       '<div class="nsub2">'+note+'</div>'+
+       noticeCounts(a,parts,closed)+'</div>'+
+       (PW?'<button class="nx" title="'+(closed?'Убрать плашку':'Закрыть сбор')+'" onclick="'+
+           (closed?'noticeOff':'noticeClose')+'(event,\''+a.id+'\')">✕</button>':'')+
+       '</div>';
   });
   h+='<div class="tabs">';
   h+=tabBtn('sum','📊 Сводка')+tabBtn('kids','👧 Взносы')+tabBtn('exp','🧾 Расходы')+tabBtn('adm','✎ Правка');
@@ -348,7 +421,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.6'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.9'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -460,11 +533,13 @@ function kidsListHTML(){
         sub = (p>0&&p<r ? 'сдано '+fmt(p)+' из '+fmt(r) : '')+(a.alt?(p>0&&p<r?' · ':'')+tierLabel(a,k.id):'');
       }
     }else{
-      var paid=paidScope(k.id), d=expScope(k.id)-paid;
-      chip = d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
-           : d<0 ? '<span class="chip b">переплата '+fmt(-d)+'</span>'
-                 : '<span class="chip g">всё сдано ✓</span>';
-      sub = 'сдано '+fmt(paid)+' из '+fmt(expYear(k.id))+' за год';
+      var paid=paidScope(k.id), yr=expYear(k.id), d=expScope(k.id)-paid;
+      chip = yr<=0 ? '<span class="chip n">сборов пока нет</span>'
+           : paid>=yr ? '<span class="chip yr"><span class="st">⭐</span> всё сдано за год '+fmt(yr)+'</span>'
+           : d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
+           : d<0 ? '<span class="chip b">всё сдано по текущим сборам ✓ с переплатой</span>'
+                 : '<span class="chip b">всё сдано по текущим сборам ✓</span>';
+      sub = 'сдано '+fmt(paid)+' из '+fmt(yr)+' за год';
     }
     h+='<div class="row" onclick="openKid(\''+k.id+'\')" style="cursor:pointer">'+
        '<div class="nm">'+esc(k.name)+(sub?'<small>'+sub+'</small>':'')+'</div>'+chip+'</div>';
@@ -749,7 +824,7 @@ function adminIncomeByKid(){
   if(!any)h+='<div class="empty">Этот ребёнок не участвует ни в одном сборе</div>';
   h+='<div id="pk-sum" class="ktot" style="margin-top:12px"><div class="big">Итого к записи: '+fmt(0)+'</div></div>';
   h+='<button class="btn wide grn" onclick="pkSave()">Записать всё одной операцией</button>';
-  h+='<div class="hint">Каждая сумма запишется отдельным взносом по своему сбору — в «📒 Журнале» их можно поправить или удалить по одному. Отменить всю запись целиком можно кнопкой «↩ Отменить».</div>';
+  h+='<div class="hint">В «📒 Журнале» это будет одной строкой — фактическим переводом. Кнопка 👁 внутри покажет, на какие сборы он разложен, там же можно поправить или удалить отдельную строку. Отменить всю запись целиком — кнопкой «↩ Отменить».</div>';
   return h;
 }
 function pkInputs(){return Array.prototype.slice.call(document.querySelectorAll('.pk-in'));}
@@ -809,8 +884,9 @@ function pkSave(){
   if(!items.length){toast('Не заполнена ни одна сумма');return;}
   if(!confirm('Записать '+items.length+' взнос(ов) от «'+k.name+'» на общую сумму '+fmt(tot)+'?'))return;
   snapshot('взносы одним платежом: '+k.name);
+  var bid=uid();
   items.forEach(function(i){
-    Y().incomes.push({id:uid(),date:incDate,child:incKid,article:i.art,amount:i.sum,method:incMethod});
+    Y().incomes.push({id:uid(),date:incDate,child:incKid,article:i.art,amount:i.sum,method:incMethod,batch:bid});
   });
   markDirty();render();toast('Записано: '+k.name.split(' ')[0]+' +'+fmt(tot));
 }
@@ -920,28 +996,79 @@ function addExp(){
 }
 
 /* --- журнал --- */
+function plural(n,a,b,c){var m=n%100;if(m>=11&&m<=14)return c;m=n%10;return m===1?a:(m>=2&&m<=4?b:c);}
+function payKey(x){return x.batch?('b:'+x.batch):('k:'+x.child+'|'+x.date+'|'+(x.method||''));}
+function payGroups(){
+  var map={},out=[];
+  Y().incomes.forEach(function(x){
+    var key=payKey(x);
+    if(!map[key]){map[key]={key:key,child:x.child,date:x.date,method:x.method||'',items:[],sum:0};out.push(map[key]);}
+    map[key].items.push(x);map[key].sum+=x.amount;
+  });
+  return out;
+}
+function payByKey(key){var g=payGroups();for(var i=0;i<g.length;i++)if(g[i].key===key)return g[i];return null;}
+function logBtn(id,l){return '<button class="'+(logFilter===id?'on':'')+'" onclick="logFilter=\''+id+'\';render()">'+l+'</button>';}
 function adminLog(){
-  var h='<div class="card"><h2>📒 Журнал операций</h2><div class="hint">✎ — исправить запись, ✕ — удалить. Любое действие можно откатить кнопкой «↩ Отменить» выше.</div>';
+  var groups=payGroups(),exps=Y().expenses;
+  var incS=0;groups.forEach(function(g){incS+=g.sum;});
+  var expS=0;exps.forEach(function(x){expS+=x.amount;});
+  var h='<div class="card"><h2>📒 Журнал операций</h2>';
+  h+='<div class="subtabs">'+logBtn('all','Всё')+logBtn('inc','➕ Приходы')+logBtn('out','➖ Расходы')+'</div>';
+  h+='<div class="btnrow" style="margin-bottom:8px">'+
+     (logFilter!=='out'?'<span class="chip g">Приходы: '+groups.length+' · '+fmt(incS)+'</span>':'')+
+     (logFilter!=='inc'?'<span class="chip r">Расходы: '+exps.length+' · '+fmt(expS)+'</span>':'')+'</div>';
+  h+='<div class="hint">Один перевод — одна строка. 👁 — из чего он состоит, ✎ — исправить, ✕ — удалить. Любое действие можно откатить кнопкой «↩ Отменить» выше.</div>';
   var ops=[];
-  Y().incomes.forEach(function(x){ops.push({t:'inc',o:x});});
-  Y().expenses.forEach(function(x){ops.push({t:'exp',o:x});});
-  ops.sort(function(a,b){return a.o.date<b.o.date?1:-1;});
+  if(logFilter!=='out')groups.forEach(function(g){ops.push({t:'inc',date:g.date,g:g});});
+  if(logFilter!=='inc')exps.forEach(function(x){ops.push({t:'exp',date:x.date,o:x});});
+  ops.sort(function(a,b){return a.date<b.date?1:-1;});
   if(!ops.length)h+='<div class="empty">Операций пока нет</div>';
   ops.forEach(function(r){
-    var x=r.o;
     if(r.t==='inc'){
-      var k=kidById(x.child);
-      h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span>'+esc(k?k.name:'?')+'</span>'+
-         '<span><span class="money pos">+'+fmt(x.amount)+'</span> <button class="btn sm sec" onclick="editInc(\''+x.id+'\')">✎</button> <button class="btn sm red" onclick="delOp(\'inc\',\''+x.id+'\')">✕</button></span></div>'+
-         '<div class="dt">'+dateRu(x.date)+(x.method?' · '+esc(x.method):'')+'</div></div>';
+      var g=r.g,k=kidById(g.child),one=(g.items.length===1);
+      var tag=one?artName(g.items[0].article):(g.items.length+' '+plural(g.items.length,'сбор','сбора','сборов'));
+      h+='<div class="exp-item"><div class="top"><span><span class="tag pos">'+esc(tag)+'</span>'+esc(k?k.name:'?')+'</span>'+
+         '<span><span class="money pos">+'+fmt(g.sum)+'</span> '+
+         (one?'<button class="btn sm sec" onclick="editInc(\''+g.items[0].id+'\')">✎</button> <button class="btn sm red" onclick="delOp(\'inc\',\''+g.items[0].id+'\')">✕</button>'
+             :'<button class="btn sm sec" onclick="openPay(\''+g.key+'\')">👁 разбивка</button>')+
+         '</span></div>'+
+         '<div class="dt">'+dateRu(g.date)+(g.method?' · '+esc(g.method):'')+'</div></div>';
     }else{
-      h+='<div class="exp-item"><div class="top"><span><span class="tag">'+esc(artName(x.article))+'</span>'+esc(x.desc||'')+'</span>'+
+      var x=r.o;
+      h+='<div class="exp-item"><div class="top"><span><span class="tag neg">'+esc(artName(x.article))+'</span>'+esc(x.desc||'')+'</span>'+
          '<span><span class="money neg">−'+fmt(x.amount)+'</span> <button class="btn sm sec" onclick="editExp(\''+x.id+'\')">✎</button> <button class="btn sm red" onclick="delOp(\'exp\',\''+x.id+'\')">✕</button></span></div>'+
          '<div class="dt">'+dateRu(x.date)+'</div></div>';
     }
   });
   h+='</div>';
   return h;
+}
+function openPay(key){
+  var g=payByKey(key); if(!g){closeModal();return;}
+  var k=kidById(g.child);
+  var h='<h2>💳 Поступление<button class="x" onclick="closeModal()">✕</button></h2>';
+  h+='<div class="hint">'+esc(k?k.name:'?')+' · '+dateRu(g.date)+(g.method?' · '+esc(g.method):'')+'</div>';
+  h+='<div class="ktot" style="margin:8px 0 2px"><div class="big">Всего +'+fmt(g.sum)+'</div>'+
+     '<div class="sub">'+g.items.length+' '+plural(g.items.length,'сбор','сбора','сборов')+' в одном переводе</div></div>';
+  h+='<h3>На какие сборы разложено</h3>';
+  g.items.forEach(function(x){
+    h+='<div class="row"><div class="nm">'+esc(artName(x.article))+'</div>'+
+       '<span><span class="money pos">+'+fmt(x.amount)+'</span> '+
+       '<button class="btn sm sec" onclick="editInc(\''+x.id+'\')">✎</button> '+
+       '<button class="btn sm red" onclick="delPayItem(\''+key+'\',\''+x.id+'\')">✕</button></span></div>';
+  });
+  h+='<div class="hint">Удалите все строки — и платёж исчезнет из журнала целиком.</div>';
+  showModal(h);
+}
+function delPayItem(key,id){
+  var arr=Y().incomes,x=findOp(arr,id); if(!x)return;
+  if(!confirm('Удалить взнос «'+artName(x.article)+'» на '+fmt(x.amount)+'?\n\nОстальные сборы этого перевода останутся.'))return;
+  snapshot('удаление взноса');
+  for(var i=0;i<arr.length;i++)if(arr[i].id===id){arr.splice(i,1);break;}
+  markDirty();render();
+  if(payByKey(key))openPay(key);
+  else{closeModal();toast('Платёж удалён полностью');}
 }
 function findOp(arr,id){for(var i=0;i<arr.length;i++)if(arr[i].id===id)return arr[i];return null;}
 function editInc(id){
@@ -1126,7 +1253,7 @@ function editArt(id){
      '<div class="hint">Для сборов вроде хознужд, где семьи платят каждый месяц. Ставка сама становится больше на сумму взноса первого числа каждого месяца — вручную править ничего не нужно и сохранять тоже. После последнего месяца рост прекращается. Если поле месяца вводится вручную, формат такой: 2026-09.</div>';
   h+='<div class="checkrow" style="margin-top:10px"><input type="checkbox" id="a-bd"'+(a.birthday?' checked':'')+'><label for="a-bd">🎂 Особый тип: сбор на дни рождения детей</label></div>'+
   '<div class="hint" style="margin:-2px 0 4px 30px">Приложение не угадывает тип по названию, поэтому галочка есть у каждого сбора — но нужна она обычно только одному: у него появляются отметки «подарок вручён» и связь с вкладкой 🎂 ДР. У обычных сборов оставьте её пустой.</div>';
-  h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Напоминать о сборе на главной странице — напоминание видят все и оно висит, пока по сбору не появится первый расход</label></div>';
+  h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Напоминать о сборе на главной странице — плашку видят все. Первое нажатие ✕ на плашке закрывает сбор: она станет серой и останется висеть со списком тех, кто не сдал. Второе нажатие убирает её совсем</label></div>';
   h+='<button class="btn wide" onclick="saveArt('+(id?'\''+id+'\'':'null')+')">Сохранить</button>';
   showModal(h);
 }
@@ -1145,7 +1272,8 @@ function saveArt(id){
   var baseRate=(rate>=0)?Math.round(rate):0;
   snapshot(id?'правка сбора':'новый сбор');
   var a;
-  if(id){a=artById(id);a.name=name;a.rate=baseRate;a.birthday=bd;a.notice=nt;}
+  if(id){a=artById(id);var prevNt=!!a.notice;a.name=name;a.rate=baseRate;a.birthday=bd;a.notice=nt;
+    if(!nt||!prevNt)delete a.nclosed;}
   else{a={id:uid(),name:name,rate:baseRate,active:true,birthday:bd,notice:nt,excluded:[],gifts:[]};Y().articles.push(a);}
   a.label=mainLab||undefined;
   if(altRate>0&&!moOn){a.alt={rate:Math.round(altRate),label:altLab||'вариант 2'};a.altKids=a.altKids||[];}
