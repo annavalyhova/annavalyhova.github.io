@@ -283,7 +283,6 @@ function participates(art,kidId){return (art.excluded||[]).indexOf(kidId)<0;}
 function paidBy(kidId,artId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId&&x.article===artId)s+=x.amount;});return s;}
 function artsScope(){var a=artsActive();return a.length?a:Y().articles;}
 function paidScope(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=paidBy(kidId,a.id);});return s;}
-function expScope(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=rateFor(a,kidId);});return s;}
 function rateYear(a,kidId){return (isMonthly(a)&&monthsTotal(a))?a.monthly.step*monthsTotal(a):rateFor(a,kidId);}
 function expYear(kidId){var s=0;artsScope().forEach(function(a){if(participates(a,kidId))s+=rateYear(a,kidId);});return s;}
 function paidTotal(kidId){var s=0;Y().incomes.forEach(function(x){if(x.child===kidId)s+=x.amount;});return s;}
@@ -311,8 +310,27 @@ function rateText(a){
   return a.alt?fmt(a.rate)+' / '+fmt(a.alt.rate):fmt(a.rate);
 }
 function payStep(a,kidId){return isMonthly(a)?a.monthly.step:rateFor(a,kidId);}
-function expectedFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=rateFor(a,kidId);});return s;}
-function debtFor(kidId){var s=0;artsActive().forEach(function(a){if(participates(a,kidId))s+=(rateFor(a,kidId)-paidBy(kidId,a.id));});return s;}
+/* сбор считается объявленным, пока его явно не вернут в планы */
+function isOpen(a){return a.opened===true||a.notice===true;}
+function artStatus(a){
+  if(!isOpen(a))return {ic:'🕒',txt:'в планах'};
+  if(a.nclosed)return {ic:'📋',txt:'закрыт'};
+  if(!a.notice)return {ic:'📣',txt:'объявлен · плашка убрана'};
+  return {ic:'📣',txt:'объявлен'};
+}
+/* месяцы, которые уже прошли целиком: текущий месяц долгом не считается */
+function monthsDue(a){
+  if(!isMonthly(a))return 0;
+  var n=ymNum(ymNow())-ymNum(a.monthly.from),cap=monthsTotal(a);
+  if(n<0)n=0; if(cap&&n>cap)n=cap;
+  return n;
+}
+function dueFor(a,kidId){return isMonthly(a)?a.monthly.step*monthsDue(a):rateFor(a,kidId);}
+function artsOpen(){return artsScope().filter(isOpen);}
+function openCount(kidId){var n=0;artsOpen().forEach(function(a){if(participates(a,kidId))n++;});return n;}
+function dueScope(kidId){var s=0;artsOpen().forEach(function(a){if(participates(a,kidId))s+=dueFor(a,kidId);});return s;}
+function paidOpen(kidId){var s=0;artsOpen().forEach(function(a){if(participates(a,kidId))s+=paidBy(kidId,a.id);});return s;}
+function debtFor(kidId){return dueScope(kidId)-paidOpen(kidId);}
 function artCollected(artId){var s=0;Y().incomes.forEach(function(x){if(x.article===artId)s+=x.amount;});return s;}
 function artSpent(artId){var s=0;Y().expenses.forEach(function(x){if(x.article===artId)s+=x.amount;});return s;}
 function sumIncomes(){var s=0;Y().incomes.forEach(function(x){s+=x.amount;});return s;}
@@ -422,7 +440,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.12'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.13'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -446,7 +464,7 @@ function viewSummary(){
   h+='<div class="card"><h2>📌 Коротко</h2>';
   h+='<div class="row"><div class="nm">Детей в классе</div><span class="chip b">'+kidsActive().length+'</span></div>';
   h+='<div class="row"><div class="nm">Активных сборов</div><span class="chip b">'+artsActive().length+'</span></div>';
-  h+='<div class="row"><div class="nm">Не сдали полностью</div><span class="chip '+(dc?'r':'g')+'">'+(dc?dc+' чел.':'все сдали ✓')+'</span></div>';
+  h+='<div class="row"><div class="nm">Есть долг по объявленным сборам</div><span class="chip '+(dc?'r':'g')+'">'+(dc?dc+' чел.':'все сдали ✓')+'</span></div>';
   h+='</div>';
 
   h+='<div class="card"><h2>🎯 Сборы: собрано и потрачено</h2>';
@@ -534,9 +552,10 @@ function kidsListHTML(){
         sub = (p>0&&p<r ? 'сдано '+fmt(p)+' из '+fmt(r) : '')+(a.alt?(p>0&&p<r?' · ':'')+tierLabel(a,k.id):'');
       }
     }else{
-      var paid=paidScope(k.id), yr=expYear(k.id), d=expScope(k.id)-paid;
+      var paid=paidScope(k.id), yr=expYear(k.id), d=debtFor(k.id);
       chip = yr<=0 ? '<span class="chip n">сборов пока нет</span>'
            : paid>=yr ? '<span class="chip yr">всё сдано за год '+fmt(yr)+' ✓</span>'
+           : !openCount(k.id) ? '<span class="chip n">сборы ещё не объявлены</span>'
            : d>0 ? '<span class="chip r">долг '+fmt(d)+'</span>'
            : d<0 ? '<span class="chip b">всё сдано по текущим сборам ✓ с переплатой</span>'
                  : '<span class="chip b">всё сдано по текущим сборам ✓</span>';
@@ -556,13 +575,13 @@ function openKid(id){
     h+='<div class="kid-contact"><div>📞 '+esc(c.phone||'—')+'</div><div>💳 Перевод от: '+esc(c.from||'—')+'</div><div>🏦 Банк: '+esc(c.bank||'—')+'</div></div>';
   }
   h+='<h3>По сборам</h3>';
-  var kp=paidScope(id),ky=expYear(id),kn=expScope(id);
+  var kp=paidScope(id),ky=expYear(id),kn=dueScope(id);
   var kleft=Math.max(0,ky-kp),kpct=ky>0?Math.min(100,Math.round(kp/ky*100)):0;
   h+='<div class="ktot'+(ky>0&&kleft<=0?' done':'')+'">'+
      '<div class="big">Всего сдано '+fmt(kp)+' из '+fmt(ky)+' за год</div>'+
      '<div class="bar"><i style="width:'+kpct+'%"></i></div>'+
      '<div class="sub">'+(ky<=0?'Сборы ещё не объявлены':kleft>0?'Осталось '+fmt(kleft)+' · '+kpct+'%':'Всё сдано ✓')+
-     (kn!==ky?' · начислено на сегодня '+fmt(kn):'')+'</div></div>';
+     (kn!==ky?' · нужно сдать на сегодня '+fmt(kn):'')+'</div></div>';
   artsActive().forEach(function(a){
     var chip;
     if(!participates(a,id))chip='<span class="chip n">не участвует</span>';
@@ -815,11 +834,12 @@ function adminIncomeByKid(){
     if(!participates(a,incKid))return;
     any=true;
     var pd=paidBy(incKid,a.id),r=rateFor(a,incKid),yr=rateYear(a,incKid);
+    var due=isOpen(a)?dueFor(a,incKid):0;
     h+='<div class="row">'+
        '<input type="checkbox" class="pk-ck" style="width:20px;flex:none;margin:0" onchange="pkTick(this)">'+
        '<div class="nm">'+(a.birthday?'🎂 ':'')+esc(a.name)+
        '<small>сдано '+fmt(pd)+' из '+fmt(r)+(yr!==r?' · за год '+fmt(yr):'')+'</small></div>'+
-       '<input type="number" class="pk-in" data-art="'+a.id+'" data-debt="'+Math.max(0,r-pd)+'" data-year="'+Math.max(0,yr-pd)+'"'+
+       '<input type="number" class="pk-in" data-art="'+a.id+'" data-debt="'+Math.max(0,due-pd)+'" data-year="'+Math.max(0,yr-pd)+'"'+
        ' inputmode="numeric" style="max-width:108px" placeholder="0" oninput="pkCalc()"></div>';
   });
   if(!any)h+='<div class="empty">Этот ребёнок не участвует ни в одном сборе</div>';
@@ -1211,7 +1231,7 @@ function adminArts(){
     if(a.active===false&&!divider){divider=true;h+='<h3 style="color:var(--muted)">🗄 В архиве ('+arch.length+')</h3>';}
     var parts=kidsActive().filter(function(k){return participates(a,k.id);}).length;
     h+='<div class="row'+(a.active===false?' inactive':'')+'"><div class="nm" style="cursor:pointer" onclick="openArt(\''+a.id+'\')">'+(a.birthday?'🎂 ':'')+(isMonthly(a)?'📅 ':'')+esc(a.name)+
-       '<small>'+rateText(a)+' с человека · участвуют: '+parts+' из '+kidsActive().length+(a.active===false?' · в архиве':'')+'</small></div>'+
+       '<small>'+artStatus(a).ic+' '+artStatus(a).txt+' · '+rateText(a)+' с человека · участвуют: '+parts+' из '+kidsActive().length+(a.active===false?' · в архиве':'')+'</small></div>'+
        '<div class="btnrow"><button class="btn sm sec" onclick="editArt(\''+a.id+'\')">✎</button>'+
        '<button class="btn sm sec" onclick="partArt(\''+a.id+'\')">👥</button>'+
        (a.alt?'<button class="btn sm sec" title="варианты цены" onclick="tierArt(\''+a.id+'\')">💠</button>':'')+
@@ -1254,9 +1274,24 @@ function editArt(id){
      '<div class="hint">Для сборов вроде хознужд, где семьи платят каждый месяц. Ставка сама становится больше на сумму взноса первого числа каждого месяца — вручную править ничего не нужно и сохранять тоже. После последнего месяца рост прекращается. Если поле месяца вводится вручную, формат такой: 2026-09.</div>';
   h+='<div class="checkrow" style="margin-top:10px"><input type="checkbox" id="a-bd"'+(a.birthday?' checked':'')+'><label for="a-bd">🎂 Особый тип: сбор на дни рождения детей</label></div>'+
   '<div class="hint" style="margin:-2px 0 4px 30px">Приложение не угадывает тип по названию, поэтому галочка есть у каждого сбора — но нужна она обычно только одному: у него появляются отметки «подарок вручён» и связь с вкладкой 🎂 ДР. У обычных сборов оставьте её пустой.</div>';
-  h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Напоминать о сборе на главной странице — плашку видят все. Первое нажатие ✕ на плашке закрывает сбор: она станет серой и останется висеть со списком тех, кто не сдал. Второе нажатие убирает её совсем</label></div>';
+  h+='<div class="checkrow"><input type="checkbox" id="a-nt"'+(a.notice?' checked':'')+'><label for="a-nt">📣 Объявить сбор родителям — плашка на главной, её видят все. С этого момента сбор входит в долги. Первое нажатие ✕ на плашке закрывает сбор: она станет серой и останется висеть со списком тех, кто не сдал. Второе нажатие убирает её совсем</label></div>';
+  if(id){
+    var st=artStatus(a);
+    h+='<h3>Статус сбора</h3><div class="hint">'+st.ic+' <b>'+st.txt+'</b> — '+
+       (isOpen(a)?'входит в долги родителей':'в долги не входит, пока сбор не объявлен')+
+       '. Годовой план 5 550 ₽ и строка «сдано … за год» считаются по всем сборам независимо от статуса.</div>';
+    if(isOpen(a))h+='<button class="btn sm gry" style="margin-bottom:8px" onclick="unopenArt(\''+id+'\')">↩ Вернуть в планы</button>';
+  }
   h+='<button class="btn wide" onclick="saveArt('+(id?'\''+id+'\'':'null')+')">Сохранить</button>';
   showModal(h);
+}
+function unopenArt(id){
+  var a=artById(id); if(!a)return;
+  if(!confirm('Вернуть сбор «'+a.name+'» в планы?\n\nОн перестанет считаться объявленным: долги по нему у родителей исчезнут, плашка с главной пропадёт. Взносы и расходы останутся на месте.'))return;
+  snapshot('сбор возвращён в планы: '+a.name);
+  a.opened=false;a.notice=false;delete a.nclosed;
+  markDirty();closeModal();
+  toast('Сбор «'+a.name+'» снова в планах',4200);
 }
 function saveArt(id){
   var name=$('#a-name').value.trim(),rate=parseFloat($('#a-rate').value);
@@ -1276,6 +1311,7 @@ function saveArt(id){
   if(id){a=artById(id);var prevNt=!!a.notice;a.name=name;a.rate=baseRate;a.birthday=bd;a.notice=nt;
     if(!nt||!prevNt)delete a.nclosed;}
   else{a={id:uid(),name:name,rate:baseRate,active:true,birthday:bd,notice:nt,excluded:[],gifts:[]};Y().articles.push(a);}
+  if(nt)a.opened=true;
   a.label=mainLab||undefined;
   if(altRate>0&&!moOn){a.alt={rate:Math.round(altRate),label:altLab||'вариант 2'};a.altKids=a.altKids||[];}
   else{delete a.alt;delete a.altKids;}
