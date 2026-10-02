@@ -242,6 +242,7 @@ function Y(){
 function setYear(id){YSEL=id;kidsFilter='';kidQuery='';incArticle='';render();}
 var tab='sum', tTab='inc', kidQuery='', tQuery='', logFilter='all';
 var incArticle='', incDate=todayISO(), incMethod='Сбер', incMode='art', incKid='';
+var incShowPaid=false, pkDraft={};
 
 /* ===== утилиты ===== */
 function $(s){return document.querySelector(s);}
@@ -310,6 +311,14 @@ function rateText(a){
   return a.alt?fmt(a.rate)+' / '+fmt(a.alt.rate):fmt(a.rate);
 }
 function payStep(a,kidId){return isMonthly(a)?a.monthly.step:rateFor(a,kidId);}
+/* сбор закрыт для ребёнка: сдана вся годовая сумма. У бессрочного ежемесячного сбора
+   и у сбора со ставкой 0 потолка нет — такие не прячем. */
+function fullyPaid(a,kidId){
+  if(isMonthly(a)&&!monthsTotal(a))return false;
+  var yr=rateYear(a,kidId);
+  if(!(yr>0))return false;
+  return paidBy(kidId,a.id)>=yr;
+}
 /* сбор считается объявленным, пока его явно не вернут в планы */
 function isOpen(a){return a.opened===true||a.notice===true;}
 function artStatus(a){
@@ -440,7 +449,7 @@ function render(){
   else h+=viewAdmin();
 
   h+='<footer>'+(REMOTE?'Данные обновляет казначей — страница всегда показывает свежую версию.':'Страница работает без интернета и обновляется вручную.')+
-     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.13'+
+     '<div class="updated">Касса класса · сборка v'+(DATA.meta.build||1)+'.14'+
      (DATA.meta.keeper?' · '+esc(DATA.meta.keeper):'')+'</div></footer>';
   h+='</div>';
 
@@ -796,8 +805,16 @@ function unlock(){
 }
 
 /* --- приход --- */
-function setIncMode(m){incMode=m;render();}
-function setIncKid(v){incKid=v;render();}
+function setIncMode(m){incMode=m;pkDraft={};incShowPaid=false;render();}
+function setIncKid(v){incKid=v;pkDraft={};incShowPaid=false;render();}
+/* запоминаем уже введённые суммы, чтобы перерисовка списка их не стёрла */
+function pkStash(){
+  pkDraft={};
+  pkInputs().forEach(function(el){if(el.value!=='')pkDraft[el.getAttribute('data-art')]=el.value;});
+  var g=document.getElementById('pk-got');
+  if(g&&g.value!=='')pkDraft.__got=g.value;
+}
+function setIncShowPaid(v){pkStash();incShowPaid=v;render();setTimeout(pkCalc,0);}
 function incMethodSel(){
   var h='<label class="f">Способ оплаты</label><select onchange="incMethod=this.value">';
   ['Сбер','Тинькофф','ВТБ','Озон','Альфа','наличные','другое'].forEach(function(m){
@@ -822,27 +839,32 @@ function adminIncomeByKid(){
   h+=incMethodSel();
   if(!k)return h+'<div class="empty">В классе пока нет детей</div>';
   h+='<label class="f">Получено от родителя, ₽ (не обязательно)</label>'+
-     '<input type="number" id="pk-got" inputmode="numeric" placeholder="впишите сумму перевода — касса проверит раскладку" oninput="pkCalc()">';
+     '<input type="number" id="pk-got" inputmode="numeric" value="'+esc(pkDraft.__got||'')+'" placeholder="впишите сумму перевода — касса проверит раскладку" oninput="pkCalc()">';
   h+='<div class="btnrow" style="margin:10px 0 4px">'+
      '<button class="btn sm sec" onclick="pkFill(\'debt\')">Разложить долг на сегодня</button>'+
      '<button class="btn sm sec" onclick="pkFill(\'year\')">Разложить за весь год</button>'+
      '<button class="btn sm gry" onclick="pkFill(\'zero\')">Очистить</button></div>';
   h+='<h3>Сколько на какой сбор</h3>';
-  h+='<div class="hint" style="margin-bottom:4px">Поставьте галочку — сумма подставится сама. Если вписано «Получено», касса подставит не больше остатка: последний отмеченный сбор закроется частично. Любое число можно поправить руками.</div>';
-  var any=false;
+  h+='<div class="hint" style="margin-bottom:4px">В списке только незакрытые сборы: как только ребёнок сдал по сбору всю сумму, строка уходит сама. Поставьте галочку — сумма подставится сама. Если вписано «Получено», касса подставит не больше остатка: последний отмеченный сбор закроется частично. Любое число можно поправить руками.</div>';
+  var any=false,hid=[];
   artsActive().forEach(function(a){
     if(!participates(a,incKid))return;
+    var done=fullyPaid(a,incKid);
+    if(done)hid.push(a);
+    if(done&&!incShowPaid)return;
     any=true;
     var pd=paidBy(incKid,a.id),r=rateFor(a,incKid),yr=rateYear(a,incKid);
     var due=isOpen(a)?dueFor(a,incKid):0;
-    h+='<div class="row">'+
+    h+='<div class="row"'+(done?' style="opacity:.6"':'')+'>'+
        '<input type="checkbox" class="pk-ck" style="width:20px;flex:none;margin:0" onchange="pkTick(this)">'+
-       '<div class="nm">'+(a.birthday?'🎂 ':'')+esc(a.name)+
+       '<div class="nm">'+(a.birthday?'🎂 ':'')+esc(a.name)+(done?' <span class="chip g">закрыт ✓</span>':'')+
        '<small>сдано '+fmt(pd)+' из '+fmt(r)+(yr!==r?' · за год '+fmt(yr):'')+'</small></div>'+
        '<input type="number" class="pk-in" data-art="'+a.id+'" data-debt="'+Math.max(0,due-pd)+'" data-year="'+Math.max(0,yr-pd)+'"'+
-       ' inputmode="numeric" style="max-width:108px" placeholder="0" oninput="pkCalc()"></div>';
+       ' inputmode="numeric" style="max-width:108px" placeholder="0" value="'+esc(pkDraft[a.id]||'')+'" oninput="pkCalc()"></div>';
   });
-  if(!any)h+='<div class="empty">Этот ребёнок не участвует ни в одном сборе</div>';
+  if(!any)h+='<div class="empty">'+(hid.length?'✅ Этот ребёнок сдал полностью по всем своим сборам — вписывать нечего':'Этот ребёнок не участвует ни в одном сборе')+'</div>';
+  if(hid.length)h+='<div class="btnrow" style="margin-top:8px"><button class="btn sm gry" onclick="setIncShowPaid('+(incShowPaid?'false':'true')+')">'+
+     (incShowPaid?'Снова скрыть закрытые сборы ('+hid.length+')':'✅ Закрыто полностью: '+hid.length+' — показать')+'</button></div>';
   h+='<div id="pk-sum" class="ktot" style="margin-top:12px"><div class="big">Итого к записи: '+fmt(0)+'</div></div>';
   h+='<button class="btn wide grn" onclick="pkSave()">Записать всё одной операцией</button>';
   h+='<div class="hint">В «📒 Журнале» это будет одной строкой — фактическим переводом. Кнопка 👁 внутри покажет, на какие сборы он разложен, там же можно поправить или удалить отдельную строку. Отменить всю запись целиком — кнопкой «↩ Отменить».</div>';
@@ -855,6 +877,7 @@ function pkTick(el){
   if(!el.checked){inp.value='';pkCalc();return;}
   var want=+inp.getAttribute('data-debt')||0;
   if(!want)want=+inp.getAttribute('data-year')||0;
+  var closed=((+inp.getAttribute('data-year')||0)<=0);
   var g=document.getElementById('pk-got'),got=g?parseFloat(g.value):NaN;
   if(got>0){
     var used=0;
@@ -863,7 +886,8 @@ function pkTick(el){
     if(want>free)want=free;
   }
   inp.value=want>0?want:'';
-  if(!want)toast('Вся полученная сумма уже разложена по другим сборам',4000);
+  if(!want)toast(closed?'По этому сбору уже сдано всё — впишите сумму вручную, если это переплата'
+                       :'Вся полученная сумма уже разложена по другим сборам',4000);
   pkCalc();
 }
 function pkFill(mode){
@@ -909,6 +933,7 @@ function pkSave(){
   items.forEach(function(i){
     Y().incomes.push({id:uid(),date:incDate,child:incKid,article:i.art,amount:i.sum,method:incMethod,batch:bid});
   });
+  pkDraft={};incShowPaid=false;
   markDirty();render();toast('Записано: '+k.name.split(' ')[0]+' +'+fmt(tot));
 }
 function adminIncomeByArt(){
